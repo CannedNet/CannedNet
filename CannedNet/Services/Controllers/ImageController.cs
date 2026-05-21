@@ -1,85 +1,82 @@
-﻿using CannedNet.Services.Infrastructure;
+﻿using System.Net.Mime;
+using CannedNet.Services.Infrastructure;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Processing;
 
 namespace CannedNet.Services.Controllers;
 
 public class ImageController
 {
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
+    private static readonly HttpClient HttpClient = new();
+
+    public WebApplicationBuilder Initialize(string[]? args = null)
+        => ServiceExtensions.CreateRecNetBuilder(args);
 
     public void MapEndpoints(WebApplication app)
     {
-        var imagesDir = "Images";
-        if (!Directory.Exists(imagesDir))
-        {
-            Directory.CreateDirectory(imagesDir);
-        }
+        var imagesDir = Path.Combine("Images");
 
-        app.MapGet("/{imageId}", (string imageId) =>
-        {
-            if (!Directory.Exists(imagesDir))
-            {
-                return Results.NotFound();
-            }
-            
-            var files = Directory.GetFiles(imagesDir, $"{imageId}.*");
-            var filePath = files.FirstOrDefault();
-            
-            if (filePath == null)
-            {
-                return Results.NotFound();
-            }
-            
-            var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var contentType = extension switch
-            {
-                ".png" => "image/png",
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                ".bmp" => "image/bmp",
-                _ => "application/octet-stream"
-            };
-            
-            var fileStream = File.OpenRead(filePath);
-            return Results.File(fileStream, contentType);
-        });
+        Directory.CreateDirectory(imagesDir);
 
-        app.MapGet("/", (HttpContext context) =>
+        app.MapGet("/{imageName}", async (
+            HttpContext context,
+            string imageName
+        ) =>
         {
-            var imageId = context.Request.Query["imageId"].FirstOrDefault();
-            var sig = context.Request.Query["sig"].FirstOrDefault();
-            
-            if (string.IsNullOrEmpty(imageId))
+            byte[] imageBytes;
+
+            var filePath = Path.Combine(imagesDir, imageName);
+
+            if (File.Exists(filePath))
             {
-                return Results.BadRequest();
+                imageBytes = await File.ReadAllBytesAsync(filePath);
             }
-            
-            if (!Directory.Exists(imagesDir))
+            else
             {
-                return Results.NotFound();
+                var response = await HttpClient.GetAsync(
+                    $"https://cdn.rec.net/img/{imageName}"
+                );
+
+                if (!response.IsSuccessStatusCode)
+                    return Results.NotFound();
+
+                imageBytes = await response.Content.ReadAsByteArrayAsync();
             }
-            
-            var files = Directory.GetFiles(imagesDir, $"{imageId}.*");
-            var filePath = files.FirstOrDefault();
-            
-            if (filePath == null)
+
+            int? width = null;
+            int? height = null;
+
+            if (int.TryParse(context.Request.Query["width"], out var w))
+                width = w;
+
+            if (int.TryParse(context.Request.Query["height"], out var h))
+                height = h;
+
+            if (width == null && height == null)
             {
-                return Results.NotFound();
+                return Results.File(imageBytes, MediaTypeNames.Image.Png);
             }
-            
-            var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var contentType = extension switch
+
+            using var image = Image.Load(imageBytes);
+
+            image.Mutate(x => x.Resize(new ResizeOptions
             {
-                ".png" => "image/png",
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                ".bmp" => "image/bmp",
-                _ => "application/octet-stream"
-            };
-            
-            var fileStream = File.OpenRead(filePath);
-            return Results.File(fileStream, contentType);
+                Size = new Size(
+                    width ?? 0,
+                    height ?? 0
+                ),
+                Mode = ResizeMode.Max
+            }));
+
+            await using var output = new MemoryStream();
+
+            await image.SaveAsync(output, new PngEncoder());
+
+            return Results.File(
+                output.ToArray(),
+                MediaTypeNames.Image.Png
+            );
         });
     }
 }
