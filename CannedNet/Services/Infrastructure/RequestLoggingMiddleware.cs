@@ -29,6 +29,10 @@ public class RequestLoggingMiddleware
             request.Body.Position = 0;
         }
 
+        var originalBody = context.Response.Body;
+        await using var responseBody = new MemoryStream();
+        context.Response.Body = responseBody;
+
         try
         {
             await _next(context);
@@ -47,12 +51,25 @@ public class RequestLoggingMiddleware
             
             var headerStr = string.IsNullOrEmpty(sensitiveHeaders) ? headers : $"{headers}\n  {sensitiveHeaders}";
             
+            var responseBodyText = "";
+            if (responseBody.Length > 0 && responseBody.Length < 10000)
+            {
+                responseBody.Position = 0;
+                using var responseReader = new StreamReader(responseBody, Encoding.UTF8, leaveOpen: true);
+                responseBodyText = responseReader.ReadToEnd();
+                responseBody.Position = 0;
+            }
+
             if (!string.IsNullOrWhiteSpace(body))
-                _logger.LogInformation("[{RequestId}] {Method} {Path}{QueryString}\n  {HeaderStr}\n  Body: {Body}", 
-                    requestId, request.Method, request.Path, request.QueryString, headerStr, body);
+                _logger.LogInformation("[{RequestId}] {Method} {Path}{QueryString}\n  {HeaderStr}\n  Body: {Body}\n  Response: {StatusCode} {ResponseBody}",
+                    requestId, request.Method, request.Path, request.QueryString, headerStr, body, context.Response.StatusCode, responseBodyText);
             else
-                _logger.LogInformation("[{RequestId}] {Method} {Path}{QueryString}\n  {HeaderStr}", 
-                    requestId, request.Method, request.Path, request.QueryString, headerStr);
+                _logger.LogInformation("[{RequestId}] {Method} {Path}{QueryString}\n  {HeaderStr}\n  Response: {StatusCode} {ResponseBody}",
+                    requestId, request.Method, request.Path, request.QueryString, headerStr, context.Response.StatusCode, responseBodyText);
+
+            responseBody.Position = 0;
+            await responseBody.CopyToAsync(originalBody);
+            context.Response.Body = originalBody;
         }
     }
 

@@ -16,6 +16,11 @@ public class MatchmakingController
         var jwtService = app.Services.GetRequiredService<JwtTokenService>();
         
         app.MapPost("/player/login", () => Results.Ok());
+
+        app.MapPost("/player/exclusivelogin", (HttpRequest request) =>
+        {
+            return Results.Json(new { errorCode = 0 });
+        });
         
         app.MapGet("/player", async (HttpRequest request, AppDbContext db) =>
         {
