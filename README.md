@@ -19,6 +19,7 @@ TODO:
 - Avatars will not load
 - Orientation doesn't load
 - Many matchmaking things don't work
+- Creating accounts from the game client is buggy/broken
 
 Other (non-2023 specific):
 - Play tab will randomly try to use the new UI split-test randomly, I want to try and prevent this as the endpoints are a bit weird, and I'd rather not have the inconsisency between sessions.
