@@ -314,5 +314,53 @@ public class EconController
             await db.SaveChangesAsync();
             return Results.Ok();
         });
+        
+        app.MapGet("/api/equipment/v2/getUnlocked", async (HttpRequest request, AppDbContext db) =>
+        {
+            // TODO ADD FUNCTIONALITY
+            return "[]";
+        });
+        
+        app.MapGet("/api/consumables/v2/getUnlocked", async (HttpRequest request, AppDbContext db, JwtTokenService jwtService) =>
+        {
+            var authHeader = request.Headers.Authorization.ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return Results.Unauthorized();
+
+            var token = authHeader.Substring("Bearer ".Length);
+            var accountId = jwtService.ValidateAndGetAccountId(token);
+
+            if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId.AsSpan(), out var id))
+                return Results.Unauthorized();
+            
+            var consumables = await db.ConsumableItems
+                .Where(c => c.OwnerAccountId == id)
+                .ToListAsync();
+            
+            return Results.Json(consumables);
+        });
+        
+        app.MapGet("/api/storefronts/v4/balance/2", async (HttpRequest request, AppDbContext db) =>
+        {
+            var authHeader = request.Headers.Authorization.ToString();
+    
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return Results.Unauthorized();
+
+            var token = authHeader.Substring("Bearer ".Length);
+            var accountId = jwtService.ValidateAndGetAccountId(token);
+
+            if (string.IsNullOrEmpty(accountId))
+                return Results.Unauthorized();
+
+            if (!int.TryParse(accountId.AsSpan(), out var id))
+                return Results.Unauthorized();
+            
+            var balance = await db.TokenBalances
+                .Where(s => s.Id == id)
+                .ToListAsync();
+
+            return Results.Json(balance);
+        });
     }
 }

@@ -28,6 +28,7 @@ public static class Services
         new() { Name = "Clubs", Port = 5009, ServiceType = typeof(ClubsController), ConfigureBuilder = b => b.ConfigureRecNetServices(), MapEndpoints = (app, _) => new ClubsController().MapEndpoints(app) },
         new() { Name = "Commerce", Port = 5010, ServiceType = typeof(CommerceController), ConfigureBuilder = b => b.ConfigureRecNetServices(), MapEndpoints = (app, _) => new CommerceController().MapEndpoints(app) },
         new() { Name = "Econ", Port = 5011, ServiceType = typeof(EconController), ConfigureBuilder = b => b.ConfigureRecNetServices(), MapEndpoints = (app, _) => new EconController().MapEndpoints(app) },
-        new() { Name = "PlayerSettings", Port = 5012, ServiceType = typeof(PlayerSettingsController), ConfigureBuilder = b => b.ConfigureRecNetServices(), MapEndpoints = (app, _) => new PlayerSettingsController().MapEndpoints(app) }
+        new() { Name = "PlayerSettings", Port = 5012, ServiceType = typeof(PlayerSettingsController), ConfigureBuilder = b => b.ConfigureRecNetServices(), MapEndpoints = (app, _) => new PlayerSettingsController().MapEndpoints(app) },
+        new() { Name = "RoomsController", Port = 5013, ServiceType = typeof(RoomsController), ConfigureBuilder = b => b.ConfigureRecNetServices(), MapEndpoints = (app, _) => new RoomsController().MapEndpoints(app) }
     ];
 }

@@ -261,6 +261,11 @@ public class MatchmakingController
             });
         });
 
+        app.MapPost("/matchmake/none", () =>
+        {
+            return Results.Json(new { errorCode = 0 });
+        });
+
         app.MapPost("/player/heartbeat", async (HttpRequest request, AppDbContext db) =>
         {
             var authHeader = request.Headers.Authorization.ToString();

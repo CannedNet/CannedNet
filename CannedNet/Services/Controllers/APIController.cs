@@ -570,30 +570,7 @@ public class APIController
             await db.SaveChangesAsync();
             return Results.Ok();
         });
-
-        app.MapGet("/api/equipment/v2/getUnlocked", async (HttpRequest request, AppDbContext db) =>
-        {
-            // TODO ADD FUNCTIONALITY
-            return "[]";
-        });
-        app.MapGet("/api/consumables/v2/getUnlocked", async (HttpRequest request, AppDbContext db, JwtTokenService jwtService) =>
-        {
-            var authHeader = request.Headers.Authorization.ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                return Results.Unauthorized();
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var accountId = jwtService.ValidateAndGetAccountId(token);
-
-            if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId.AsSpan(), out var id))
-                return Results.Unauthorized();
-            
-            var consumables = await db.ConsumableItems
-                .Where(c => c.OwnerAccountId == id)
-                .ToListAsync();
-            
-            return Results.Json(consumables);
-        });
+        
         app.MapGet("/api/objectives/v1/myprogress", async (HttpRequest request, AppDbContext db) =>
         {
             // TODO ADD FUNCTIONALITY
@@ -644,28 +621,6 @@ public class APIController
         app.MapPost("/api/CampusCard/v1/UpdateAndGetSubscription", async (HttpRequest request, AppDbContext db) =>
         {
             return Results.Json(new { subscription = (object?)null, platformAccountSubscribedPlayerId = (object?)null });
-        });
-        app.MapGet("/api/storefronts/v4/balance/2", async (HttpRequest request, AppDbContext db) =>
-        {
-            var authHeader = request.Headers.Authorization.ToString();
-    
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                return Results.Unauthorized();
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var accountId = jwtService.ValidateAndGetAccountId(token);
-
-            if (string.IsNullOrEmpty(accountId))
-                return Results.Unauthorized();
-
-            if (!int.TryParse(accountId.AsSpan(), out var id))
-                return Results.Unauthorized();
-            
-            var balance = await db.TokenBalances
-                .Where(s => s.Id == id)
-                .ToListAsync();
-
-            return Results.Json(balance);
         });
         app.MapGet("/api/storefronts/v1/p2p/betaEnabled", async (HttpRequest request, AppDbContext db) =>
         {
@@ -1253,7 +1208,7 @@ public class APIController
         });
         app.MapPost("/api/PlayerReporting/v1/hile", async (HttpRequest request, AppDbContext db) =>
         {
-            // stops crashing the game due to bepinex winhttp.dll (or melonloader version.dll)
+            // stops crashing the game due to bepinex winhttp.dll ( or melonloader version.dll)
             return Results.Ok();
         });
         app.MapGet("/api/storefronts/v3/giftdropstore/300", async (HttpRequest request, AppDbContext db) =>
@@ -1857,6 +1812,19 @@ public class APIController
                 return Results.Problem($"Error uploading image: {ex.Message}");
             }
         });
+        
+         app.MapGet("/api/config/v1/backtrace", () => Results.Ok(new
+         {
+             ReportBudget = 125,
+             FilterType = 0,
+             SampleRate = 0.025,
+             LogLineCount = 50,
+             CaptureNativeCrashes = 1,
+             AMRThresholdMS = 0,
+             MessageCount = 1000,
+             MessageRegex = "^Cannot set the parent of the GameObject .* while its new parent|^\\\\>\\\\x2010x\\\\:\\\\x20|\\\\'LabelTheme\\\\' contains missing PaletteTheme reference on",
+             VersionRegex = ".*"
+         }));
     }
 
     private static object[]? TryDeserializeTags(string json)
@@ -1917,6 +1885,8 @@ public class APIController
         
         return ids;
     }
+    
+    
 
     private static readonly string ImagesDir;
     static APIController()

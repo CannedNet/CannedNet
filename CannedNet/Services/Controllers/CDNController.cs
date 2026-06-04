@@ -14,6 +14,20 @@ public class CDNController
             return Results.Content(json, "application/json");
         });
 
+        app.MapGet("/sigs/{sigName}", async (HttpContext context, string sigName) =>
+        {
+            var filePath = Path.Combine("Sigs", sigName);
+
+            if (File.Exists(filePath))
+            {
+                var sigBytes = await File.ReadAllBytesAsync(filePath);
+                return Results.File(sigBytes, "application/octet-stream");
+            }
+            else
+            {
+                return Results.NotFound();
+            }
+        });
         app.MapPost("/upload", async (HttpContext context) =>
         {
             try
