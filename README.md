@@ -1,11 +1,7 @@
 # CannedNet
 A RecNet API Reimplementation written in C#
 
-Currently supported version: 2021-01-29
-
-Lots of data and stuff like the photon servers listed here are Radium's servers, these can be changed safely, I'm just currently using it for testing.
-
-~~Doesn't really matter as with this current state you can't login fully~~ WE GOT LOGGED IN!!!!
+Currently supported version: manifest ``7859140924515540835``
 
 TODO:
 
@@ -19,6 +15,12 @@ TODO:
 - Invites
 
 ## Known Issues
+2023 specific:
+- Avatars will not load
+- Orientation doesn't load
+- Many matchmaking things don't work
+
+Other (non-2023 specific):
 - Play tab will randomly try to use the new UI split-test randomly, I want to try and prevent this as the endpoints are a bit weird, and I'd rather not have the inconsisency between sessions.
 - All presences will say [VERSION MISMATCH]
 - Even if a player logs out, it will permenatly say they are online.
