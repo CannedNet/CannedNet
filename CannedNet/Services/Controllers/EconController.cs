@@ -12,6 +12,7 @@ public class EconController
     {
         var jwtService = app.Services.GetRequiredService<JwtTokenService>();
         var notificationService = app.Services.GetRequiredService<NotificationService>();
+        var storefrontService = app.Services.GetRequiredService<StorefrontFillService>();
         
         app.MapGet("/api/avatar/v1/defaultunlocked", () =>
         {
@@ -361,6 +362,134 @@ public class EconController
                 .ToListAsync();
 
             return Results.Json(balance);
+        });
+        
+        app.MapGet("/api/storefronts/v3/giftdropstore/3", async (HttpRequest request, AppDbContext db) =>
+        {
+            var storefronts = await storefrontService.GetStorefrontsAsync();
+            var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "watch_store");
+            if (storefront == null)
+            {
+                var json = File.ReadAllText("JSON/storefront3.json");
+                return Results.Content(json, "application/json");
+            }
+            var storeItems = storefront.Items.Select(item => new
+            {
+                item.Id,
+                item.StorefrontId,
+                item.PurchasableItemId,
+                item.Type,
+                item.IsFeatured,
+                item.NewUntil,
+                GiftDrops = item.GiftDrops.Select(gd => new
+                {
+                    gd.Id,
+                    gd.StorefrontItemId,
+                    gd.GiftDropId,
+                    gd.FriendlyName,
+                    gd.Tooltip,
+                    gd.ConsumableItemDesc,
+                    gd.AvatarItemDesc,
+                    gd.AvatarItemType,
+                    gd.EquipmentPrefabName,
+                    gd.EquipmentModificationGuid,
+                    gd.IsQuery,
+                    gd.Unique,
+                    gd.SubscribersOnly,
+                    gd.Level,
+                    gd.Rarity,
+                    gd.CurrencyType,
+                    gd.Currency,
+                    gd.Context,
+                    gd.ItemSetId,
+                    gd.ItemSetFriendlyName
+                }).ToList(),
+                Prices = item.Prices.Select(p => new
+                {
+                    p.Id,
+                    p.StorefrontItemId,
+                    p.CurrencyType,
+                    p.Price
+                }).ToList()
+            }).ToList();
+            var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
+            return Results.Ok(response);
+        });
+        
+        app.MapGet("/api/challenge/v2/getCurrent", async (HttpRequest request, AppDbContext db) =>
+        {
+            var json = File.ReadAllText("JSON/weeklychallenge.json");
+            return Results.Content(json, "application/json");
+            //return "{}";
+        });
+        
+        app.MapGet("/api/avatar/v3/saved", async (HttpRequest request, AppDbContext db) =>
+        {
+            var authHeader = request.Headers.Authorization.ToString();
+    
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return Results.Unauthorized();
+
+            var token = authHeader.Substring("Bearer ".Length);
+            var accountId = jwtService.ValidateAndGetAccountId(token);
+
+            if (string.IsNullOrEmpty(accountId))
+                return Results.Unauthorized();
+
+            if (!int.TryParse(accountId.AsSpan(), out var id))
+                return Results.Unauthorized();
+            
+            request.EnableBuffering();
+            
+            var items = await db.SavedOutfits
+                .Where(i => i.OwnerAccountId == id)
+                .ToListAsync();
+            
+            return Results.Json(items);
+        });
+        
+        app.MapGet("/api/avatar/v2/gifts", async (HttpRequest request, AppDbContext db, JwtTokenService jwtService) =>
+        {
+            try
+            {
+                var authHeader = request.Headers.Authorization.ToString();
+                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    return Results.Unauthorized();
+
+                var token = authHeader.Substring("Bearer ".Length);
+                var accountId = jwtService.ValidateAndGetAccountId(token);
+
+                if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId.AsSpan(), out var id))
+                    return Results.Unauthorized();
+
+                // Get all pending (unconsumed) gifts for this player
+                var pendingGifts = await db.ReceivedGifts
+                    .Where(rg => rg.ReceiverAccountId == id && !rg.IsConsumed)
+                    .ToListAsync();
+    
+                return Results.Json(pendingGifts);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Error retrieving gifts: {ex.Message}");
+            }
+        });
+        
+        app.MapGet("/api/gamerewards/v1/pending", async (HttpRequest request, AppDbContext db) =>
+        {
+            // TODO ADD FUNCTIONALITY
+            return "[]";
+        });
+        
+        app.MapGet("/api/roomkeys/v1/mine", async (HttpRequest request, AppDbContext db) =>
+        {
+            // TODO ADD FUNCTIONALITY
+            return "[]";
+        });
+        
+        app.MapPost("/api/CampusCard/v1/UpdateAndGetSubscription", async (HttpRequest request, AppDbContext db) =>
+        {
+            return Results.Json(new { subscription = (object?)null, platformAccountSubscribedPlayerId = (object?)null });
         });
     }
 }

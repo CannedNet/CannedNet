@@ -90,9 +90,45 @@ public class AuthController
         });
         
         app.MapGet("/role/developer/{id}", async (HttpRequest request, AppDbContext db, string id) =>
+        {
+            // TODO: implement
+            return Results.Ok(RecNetResult.Ok());
+        });
+        
+        app.MapPost("/api/accounts/v1/forplatformids", async (HttpRequest request, AppDbContext db) =>
+        {
+            request.EnableBuffering();
+            request.Body.Position = 0;
+            using var reader = new StreamReader(request.Body);
+            var body = await reader.ReadToEndAsync();
+            
+            var ids = new List<string>();
+            
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                foreach (var pair in body.Split('&'))
                 {
-                    // TODO: implement
-                    return Results.Ok(RecNetResult.Ok());
-                });
+                    var keyValue = pair.Split('=');
+                    if (keyValue.Length == 2 && keyValue[0] == "Ids")
+                    {
+                        var idString = Uri.UnescapeDataString(keyValue[1]);
+                        ids = idString.Split(',').ToList();
+                        break;
+                    }
+                }
+            }
+            
+            var results = new List<object>();
+            foreach (var platformId in ids)
+            {
+                var cachedLogin = await db.CachedLogins.FirstOrDefaultAsync(c => c.PlatformID == platformId);
+                if (cachedLogin != null)
+                {
+                    results.Add(new { accountId = cachedLogin.AccountId, platformId = platformId });
+                }
+            }
+            
+            return Results.Json(results);
+        });
     }
 }

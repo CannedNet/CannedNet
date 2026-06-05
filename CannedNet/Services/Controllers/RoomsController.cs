@@ -45,6 +45,13 @@ public class RoomsController
 
             return Results.Json(await BuildRoomResponse(result, db));
         });
+        
+        app.MapGet("/roomserver/rooms/createdby/me", async (HttpRequest request, AppDbContext db) =>
+        {
+            // TODO ADD FUNCTIONALITY
+            var json = File.ReadAllText("JSON/ownedrooms.json");
+            return Results.Content(json, "application/json");
+        });
     }
 
     private static async Task<object> BuildRoomResponse(Room result, AppDbContext db)

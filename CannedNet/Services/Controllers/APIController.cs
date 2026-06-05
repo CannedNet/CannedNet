@@ -29,6 +29,13 @@ public class APIController
             UseRudderStack = false
         }));
 
+        app.MapGet("/api/config/v1/azurespeech", () => Results.Ok(new
+        {
+            Key = "dce8de5b297747d9b5bddcc7f19e8c5b",
+            Region = "eastus",
+            Enabled = false
+        }));
+
         app.MapPost("/api/gamesight/event", async (HttpRequest request) =>
         {
             string? eventType = null;
@@ -417,31 +424,6 @@ public class APIController
             await db.SaveChangesAsync();
             return Results.Ok(avatar);
         });
-
-        app.MapGet("/api/avatar/v3/saved", async (HttpRequest request, AppDbContext db) =>
-        {
-            var authHeader = request.Headers.Authorization.ToString();
-    
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                return Results.Unauthorized();
-
-            var token = authHeader.Substring("Bearer ".Length);
-            var accountId = jwtService.ValidateAndGetAccountId(token);
-
-            if (string.IsNullOrEmpty(accountId))
-                return Results.Unauthorized();
-
-            if (!int.TryParse(accountId.AsSpan(), out var id))
-                return Results.Unauthorized();
-            
-            request.EnableBuffering();
-            
-            var items = await db.SavedOutfits
-                .Where(i => i.OwnerAccountId == id)
-                .ToListAsync();
-            
-            return Results.Json(items);
-        });
         
         app.MapGet("/api/PlayerReporting/v1/moderationBlockDetails", () => 
             Results.Content("{\"ReportCategory\":0,\"Duration\":0,\"GameSessionId\":0,\"IsHostKick\":false,\"Message\":\"\",\"PlayerIdReporter\":null,\"IsBan\":false}", "application/json"));
@@ -577,37 +559,6 @@ public class APIController
             var json = File.ReadAllText("JSON/tempmyprogress.json");
             return Results.Content(json, "application/json");
         });
-        app.MapGet("/api/avatar/v2/gifts", async (HttpRequest request, AppDbContext db, JwtTokenService jwtService) =>
-        {
-            try
-            {
-                var authHeader = request.Headers.Authorization.ToString();
-                if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                    return Results.Unauthorized();
-
-                var token = authHeader.Substring("Bearer ".Length);
-                var accountId = jwtService.ValidateAndGetAccountId(token);
-
-                if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId.AsSpan(), out var id))
-                    return Results.Unauthorized();
-
-                // Get all pending (unconsumed) gifts for this player
-                var pendingGifts = await db.ReceivedGifts
-                    .Where(rg => rg.ReceiverAccountId == id && !rg.IsConsumed)
-                    .ToListAsync();
-
-                return Results.Json(pendingGifts);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Error retrieving gifts: {ex.Message}");
-            }
-        });
-        app.MapGet("/api/gamerewards/v1/pending", async (HttpRequest request, AppDbContext db) =>
-        {
-            // TODO ADD FUNCTIONALITY
-            return "[]";
-        });
         app.MapGet("/api/communityboard/v2/current", async (HttpRequest request, AppDbContext db) =>
         {
             var json = File.ReadAllText("JSON/communityboard.json");
@@ -618,10 +569,6 @@ public class APIController
             // TODO ADD FUNCTIONALITY
             return Results.Content("{\"Created\":[],\"Responses\":[]}", "application/json");
         });
-        app.MapPost("/api/CampusCard/v1/UpdateAndGetSubscription", async (HttpRequest request, AppDbContext db) =>
-        {
-            return Results.Json(new { subscription = (object?)null, platformAccountSubscribedPlayerId = (object?)null });
-        });
         app.MapGet("/api/storefronts/v1/p2p/betaEnabled", async (HttpRequest request, AppDbContext db) =>
         {
             return "false";
@@ -630,11 +577,6 @@ public class APIController
         {
             var json = File.ReadAllText("JSON/announcements.json");
             return Results.Content(json, "application/json");
-        });
-        app.MapGet("/api/roomkeys/v1/mine", async (HttpRequest request, AppDbContext db) =>
-        {
-            // TODO ADD FUNCTIONALITY
-            return "[]";
         });
         app.MapGet("/api/quickPlay/v1/getandclear", async (HttpRequest request, AppDbContext db) =>
         {
@@ -665,98 +607,6 @@ public class APIController
                 .ToListAsync();
             
             return Results.Json(bio);
-        });
-        app.MapPost("/api/accounts/v1/forplatformids", async (HttpRequest request, AppDbContext db) =>
-        {
-            request.EnableBuffering();
-            request.Body.Position = 0;
-            using var reader = new StreamReader(request.Body);
-            var body = await reader.ReadToEndAsync();
-            
-            var ids = new List<string>();
-            
-            if (!string.IsNullOrWhiteSpace(body))
-            {
-                foreach (var pair in body.Split('&'))
-                {
-                    var keyValue = pair.Split('=');
-                    if (keyValue.Length == 2 && keyValue[0] == "Ids")
-                    {
-                        var idString = Uri.UnescapeDataString(keyValue[1]);
-                        ids = idString.Split(',').ToList();
-                        break;
-                    }
-                }
-            }
-            
-            var results = new List<object>();
-            foreach (var platformId in ids)
-            {
-                var cachedLogin = await db.CachedLogins.FirstOrDefaultAsync(c => c.PlatformID == platformId);
-                if (cachedLogin != null)
-                {
-                    results.Add(new { accountId = cachedLogin.AccountId, platformId = platformId });
-                }
-            }
-            
-            return Results.Json(results);
-        });
-        app.MapGet("/api/storefronts/v3/giftdropstore/3", async (HttpRequest request, AppDbContext db) =>
-        {
-            var storefronts = await storefrontService.GetStorefrontsAsync();
-            var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "watch_store");
-            if (storefront == null)
-            {
-                var json = File.ReadAllText("JSON/storefront3.json");
-                return Results.Content(json, "application/json");
-            }
-            var storeItems = storefront.Items.Select(item => new
-            {
-                item.Id,
-                item.StorefrontId,
-                item.PurchasableItemId,
-                item.Type,
-                item.IsFeatured,
-                item.NewUntil,
-                GiftDrops = item.GiftDrops.Select(gd => new
-                {
-                    gd.Id,
-                    gd.StorefrontItemId,
-                    gd.GiftDropId,
-                    gd.FriendlyName,
-                    gd.Tooltip,
-                    gd.ConsumableItemDesc,
-                    gd.AvatarItemDesc,
-                    gd.AvatarItemType,
-                    gd.EquipmentPrefabName,
-                    gd.EquipmentModificationGuid,
-                    gd.IsQuery,
-                    gd.Unique,
-                    gd.SubscribersOnly,
-                    gd.Level,
-                    gd.Rarity,
-                    gd.CurrencyType,
-                    gd.Currency,
-                    gd.Context,
-                    gd.ItemSetId,
-                    gd.ItemSetFriendlyName
-                }).ToList(),
-                Prices = item.Prices.Select(p => new
-                {
-                    p.Id,
-                    p.StorefrontItemId,
-                    p.CurrencyType,
-                    p.Price
-                }).ToList()
-            }).ToList();
-            var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
-            return Results.Ok(response);
-        });
-        app.MapGet("/api/challenge/v2/getCurrent", async (HttpRequest request, AppDbContext db) =>
-        {
-            var json = File.ReadAllText("JSON/weeklychallenge.json");
-            return Results.Content(json, "application/json");
-            //return "{}";
         });
         app.MapGet("/roomserver/rooms/bulk", async (HttpRequest request, AppDbContext db) =>
         {
@@ -1067,13 +917,6 @@ public class APIController
             };
 
             return Results.Json(response);
-        });
-
-        app.MapGet("/roomserver/rooms/createdby/me", async (HttpRequest request, AppDbContext db) =>
-        {
-            // TODO ADD FUNCTIONALITY
-            var json = File.ReadAllText("JSON/ownedrooms.json");
-            return Results.Content(json, "application/json");
         });
         app.MapGet("/roomserver/rooms/{id}", async (HttpRequest request, AppDbContext db, string id) =>
         {

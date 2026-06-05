@@ -231,7 +231,157 @@ public class MatchmakingController
             return Results.Json(response);
         });
         
-        app.MapPost("/goto/none", (HttpRequest request) =>
+        app.MapPost("/matchmake/{room}", async (HttpRequest request, string room, AppDbContext db) =>
+        {
+            var authHeader = request.Headers.Authorization.ToString();
+            
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return Results.Unauthorized();
+
+            var token = authHeader.Substring("Bearer ".Length);
+            var accountId = jwtService.ValidateAndGetAccountId(token);
+
+            if (string.IsNullOrEmpty(accountId))
+                return Results.Unauthorized();
+
+            if (!int.TryParse(accountId.AsSpan(), out var id))
+                return Results.Unauthorized();
+            
+            request.EnableBuffering();
+            request.Body.Position = 0;
+            var form = await request.ReadFormAsync();
+            int joinMode = 0;
+            if (int.TryParse(form["JoinMode"].ToString(), out var mode))
+            {
+                joinMode = mode;
+            }
+            request.Body.Position = 0;
+            
+            Room? roomData = null;
+            var roomLower = room.ToLower();
+            
+            if (roomLower == "dorm")
+            {
+                roomData = await db.Rooms.FirstOrDefaultAsync(r => r.IsDorm && r.CreatorAccountId == id);
+            }
+            else if (int.TryParse(room, out var roomId))
+            {
+                roomData = await db.Rooms.FirstOrDefaultAsync(r => r.RoomId == roomId);
+            }
+            
+            if (roomData == null)
+            {
+                roomData = await db.Rooms.FirstOrDefaultAsync(r => r.Name.ToLower() == roomLower);
+            }
+
+            if (roomData == null)
+            {
+                return Results.NotFound("Room not found");
+            }
+
+            var subRoom = await db.SubRooms.FirstOrDefaultAsync(s => s.RoomId == roomData.RoomId);
+            
+            string location = subRoom?.UnitySceneId ?? "";
+            int subRoomId = subRoom?.SubRoomId ?? 0;
+            int maxCapacity = subRoom?.MaxPlayers ?? 4;
+
+
+            RoomInstance? instanceToUse;
+            string photonRoomId;
+            
+            bool isPrivateInstance = joinMode == 2 || roomData.IsDorm;
+
+            var existingInstance = await db.RoomInstances.FirstOrDefaultAsync(r => r.OwnerAccountId == id && r.roomId == roomData.RoomId);
+            
+            if (existingInstance != null)
+            {
+                photonRoomId = existingInstance.photonRoomId ?? Guid.NewGuid().ToString();
+                existingInstance.roomInstanceId = existingInstance.Id;
+                existingInstance.roomId = roomData.RoomId;
+                existingInstance.subRoomId = subRoomId;
+                existingInstance.location = location;
+                existingInstance.dataBlob = "";
+                existingInstance.photonRegionId = "us";
+                existingInstance.photonRoomId = photonRoomId;
+                existingInstance.name = roomData.Name;
+                existingInstance.maxCapacity = maxCapacity;
+                existingInstance.isFull = false;
+                existingInstance.isPrivate = isPrivateInstance;
+                instanceToUse = existingInstance;
+            }
+            else
+            {
+                photonRoomId = Guid.NewGuid().ToString();
+                
+                var oldInstances = await db.RoomInstances
+                    .Where(r => r.OwnerAccountId == id && r.roomId != roomData.RoomId)
+                    .ToListAsync();
+                db.RoomInstances.RemoveRange(oldInstances);
+                
+                var publicInstance = await db.RoomInstances
+                    .FirstOrDefaultAsync(r => r.roomId == roomData.RoomId && !r.isPrivate && !r.isFull);
+                
+                if (publicInstance != null)
+                {
+                    photonRoomId = publicInstance.photonRoomId ?? Guid.NewGuid().ToString();
+                }
+                
+                instanceToUse = new RoomInstance
+                {
+                    OwnerAccountId = id,
+                    roomInstanceId = 1,
+                    roomId = roomData.RoomId,
+                    subRoomId = subRoomId,
+                    roomInstanceType = 2,
+                    location = location,
+                    dataBlob = "",
+                    photonRegionId = "us",
+                    photonRoomId = photonRoomId,
+                    name = roomData.Name,
+                    maxCapacity = maxCapacity,
+                    isFull = false,
+                    isPrivate = isPrivateInstance,
+                    isInProgress = false,
+                    EncryptVoiceChat = roomData.EncryptVoiceChat
+                };
+                db.RoomInstances.Add(instanceToUse);
+            }
+            
+            await db.SaveChangesAsync();
+
+            if (instanceToUse.Id == 0)
+            {
+                instanceToUse = await db.RoomInstances.FirstOrDefaultAsync(r => r.OwnerAccountId == id && r.roomId == roomData.RoomId);
+            }
+            
+            var response = new
+            {
+                errorCode = 0,
+                roomInstance = new
+                {
+                    roomInstanceId = instanceToUse?.Id ?? 1,
+                    roomId = instanceToUse?.roomId ?? roomData.RoomId,
+                    subRoomId = instanceToUse?.subRoomId ?? subRoomId,
+                    roomInstanceType = instanceToUse?.roomInstanceType ?? 2,
+                    location = instanceToUse?.location ?? location,
+                    dataBlob = instanceToUse?.dataBlob ?? "",
+                    eventId = instanceToUse?.eventId ?? 0,
+                    clubId = instanceToUse?.clubId ?? 0,
+                    roomCode = instanceToUse?.roomCode ?? "",
+                    photonRegionId = instanceToUse?.photonRegionId ?? "us",
+                    photonRoomId = instanceToUse?.photonRoomId ?? photonRoomId,
+                    name = instanceToUse?.name ?? roomData.Name,
+                    maxCapacity = instanceToUse?.maxCapacity ?? maxCapacity,
+                    isFull = instanceToUse?.isFull ?? false,
+                    isPrivate = isPrivateInstance,
+                    isInProgress = instanceToUse?.isInProgress ?? false,
+                    EncryptVoiceChat = instanceToUse?.EncryptVoiceChat ?? roomData.EncryptVoiceChat
+                }
+            };
+            return Results.Json(response);
+        });
+        
+        app.MapPost("/matchmake/none", (HttpRequest request) =>
         {
             // dormroom location id : 76d98498-60a1-430c-ab76-b54a29b7a163
             // offline dorm
@@ -259,11 +409,6 @@ public class MatchmakingController
                     EncryptVoiceChat = false
                 }
             });
-        });
-
-        app.MapPost("/matchmake/none", () =>
-        {
-            return Results.Json(new { errorCode = 0 });
         });
 
         app.MapPost("/player/heartbeat", async (HttpRequest request, AppDbContext db) =>
