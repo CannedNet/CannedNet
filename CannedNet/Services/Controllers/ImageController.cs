@@ -1,14 +1,26 @@
 ﻿using System.Net.Mime;
 using CannedNet.Services.Infrastructure;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
 namespace CannedNet.Services.Controllers;
 
 public class ImageController
 {
-    private static readonly HttpClient HttpClient = new();
+    private static readonly byte[] PlaceholderJpeg;
+
+    static ImageController()
+    {
+        Signatures.Init();
+
+        using var image = new Image<Rgba32>(64, 64);
+        image.Mutate(x => x.BackgroundColor(Color.FromRgb(32, 32, 32)));
+        using var ms = new MemoryStream();
+        image.SaveAsJpeg(ms, new JpegEncoder { Quality = 50 });
+        PlaceholderJpeg = ms.ToArray();
+    }
 
     public WebApplicationBuilder Initialize(string[]? args = null)
         => ServiceExtensions.CreateRecNetBuilder(args);
@@ -16,67 +28,84 @@ public class ImageController
     public void MapEndpoints(WebApplication app)
     {
         var imagesDir = Path.Combine("Images");
-
         Directory.CreateDirectory(imagesDir);
 
-        app.MapGet("/{imageName}", async (
-            HttpContext context,
-            string imageName
-        ) =>
+        app.MapGet("/{imageName}", async (HttpContext context, string imageName) =>
         {
-            byte[] imageBytes;
-
             var filePath = Path.Combine(imagesDir, imageName);
+
+            byte[] imageBytes;
+            string contentType;
 
             if (File.Exists(filePath))
             {
                 imageBytes = await File.ReadAllBytesAsync(filePath);
+                var ext = Path.GetExtension(imageName).ToLowerInvariant();
+                contentType = ext switch
+                {
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".gif" => "image/gif",
+                    ".webp" => "image/webp",
+                    ".bmp" => "image/bmp",
+                    _ => "image/png"
+                };
             }
             else
             {
-                var response = await HttpClient.GetAsync(
-                    $"https://cdn.rec.net/img/{imageName}"
-                );
-
-                if (!response.IsSuccessStatusCode)
-                    return Results.NotFound();
-
-                imageBytes = await response.Content.ReadAsByteArrayAsync();
+                imageBytes = PlaceholderJpeg;
+                contentType = "image/jpeg";
             }
 
-            int? width = null;
-            int? height = null;
+            var cropSquare = context.Request.Query["cropSquare"].FirstOrDefault();
+            var widthStr = context.Request.Query["width"].FirstOrDefault();
+            var heightStr = context.Request.Query["height"].FirstOrDefault();
 
-            if (int.TryParse(context.Request.Query["width"], out var w))
-                width = w;
-
-            if (int.TryParse(context.Request.Query["height"], out var h))
-                height = h;
-
-            if (width == null && height == null)
+            if (string.IsNullOrEmpty(widthStr) && string.IsNullOrEmpty(heightStr) && string.IsNullOrEmpty(cropSquare))
             {
-                return Results.File(imageBytes, MediaTypeNames.Image.Png);
+                SignImageResponse(context, ref imageBytes);
+                return Results.File(imageBytes, contentType);
             }
 
             using var image = Image.Load(imageBytes);
 
-            image.Mutate(x => x.Resize(new ResizeOptions
+            var resizeWidth = 0;
+            var resizeHeight = 0;
+
+            if (!string.IsNullOrEmpty(cropSquare) && cropSquare != "0" && cropSquare != "false")
             {
-                Size = new Size(
-                    width ?? 0,
-                    height ?? 0
-                ),
-                Mode = ResizeMode.Max
-            }));
+                var size = Math.Min(image.Width, image.Height);
+                var x = (image.Width - size) / 2;
+                var y = (image.Height - size) / 2;
+                image.Mutate(img => img.Crop(new Rectangle(x, y, size, size)));
+            }
 
-            await using var output = new MemoryStream();
+            if (int.TryParse(widthStr, out var w))
+                resizeWidth = w;
 
-            await image.SaveAsync(output, new PngEncoder());
+            if (int.TryParse(heightStr, out var h))
+                resizeHeight = h;
 
-            return Results.File(
-                output.ToArray(),
-                MediaTypeNames.Image.Png
-            );
+            if (resizeWidth > 0 || resizeHeight > 0)
+            {
+                image.Mutate(x => x.Resize(resizeWidth, resizeHeight));
+            }
+
+            using var output = new MemoryStream();
+            await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 85 });
+            imageBytes = output.ToArray();
+            SignImageResponse(context, ref imageBytes);
+            return Results.File(imageBytes, "image/jpeg");
         });
+    }
+
+    private static void SignImageResponse(HttpContext context, ref byte[] imageBytes)
+    {
+        if (context.Request.Query["sig"] != "p1") return;
+
+        var signature = Signatures.Sign(imageBytes);
+        if (signature != null)
+        {
+            context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature}";
+        }
     }
 }
