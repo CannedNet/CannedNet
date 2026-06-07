@@ -36,6 +36,12 @@ public static class Signatures
             Console.WriteLine($"sigs - failed to load key: {ex.Message}");
         }
     }
+    
+    public static RSA? GetRsaInstance()
+    {
+        if (!_initialized) Init();
+        return _rsa;
+    }
 
     public static string? Sign(byte[] data)
     {

@@ -1,16 +1,15 @@
-﻿using CannedNet.Services.Infrastructure;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
 
-public class ClubsController
+[ApiController, Route("club")]
+public class ClubsController : ControllerBase
 {
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
-
-    public void MapEndpoints(WebApplication app)
+    [HttpGet("home/me")]
+    [Authorize]
+    public async Task<IResult> GetClubHomeMe()
     {
-        app.MapGet("/club/home/me", () =>
-        {
-            return Results.NotFound();
-        });
+        return Results.NotFound();
     }
 }

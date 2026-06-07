@@ -7,7 +7,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace CannedNet.Services.Controllers;
 
-[ApiController, Route("")]
+[ApiController, Route("img")]
 public class ImageController : ControllerBase
 {
     private static readonly byte[] PlaceholderJpeg;
@@ -21,8 +21,6 @@ public class ImageController : ControllerBase
         image.SaveAsJpeg(ms, new JpegEncoder { Quality = 50 });
         PlaceholderJpeg = ms.ToArray();
     }
-
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
 
     [HttpGet("{imageName}")]
     public async Task<IResult> GetImage(HttpContext context, string imageName) {

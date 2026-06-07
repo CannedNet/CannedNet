@@ -9,11 +9,6 @@ namespace CannedNet.Services.Controllers;
 [ApiController, Route("account")]
 public class AccountsController : ControllerBase
 {
-    //[HttpGet]
-    //public Task<IResult> Root() {
-    //    return Task.FromResult(Results.Ok("FUCKL MYSJDIOJD"));
-    //}
-
     [HttpGet("me")]
     public async Task<IResult> Me(HttpRequest request, AppDbContext db, JwtTokenService jwtService) {
         string authHeader = request.Headers.Authorization.ToString();
@@ -106,7 +101,7 @@ public class AccountsController : ControllerBase
         return Results.Json(result);
     }
 
-    [HttpPost("cerate")]
+    [HttpPost("create")]
     public async Task<IResult> Create(HttpRequest httpRequest, AppDbContext db) {
         int platform = 0;
         string platformId = "";

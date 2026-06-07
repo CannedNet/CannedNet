@@ -1,16 +1,13 @@
-﻿using CannedNet.Services.Infrastructure;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
 
-public class CommerceController
+[ApiController, Route("commerce")]
+public class CommerceController : ControllerBase
 {
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
-
-    public void MapEndpoints(WebApplication app)
+    [HttpGet("purchase/v1/hasspentmoney")]
+    public async Task<IResult> HasSpentMoney()
     {
-        app.MapGet("/purchase/v1/hasspentmoney", (HttpRequest request) =>
-        {
-            return Results.NotFound();
-        });
+        return Results.NotFound();
     }
 }

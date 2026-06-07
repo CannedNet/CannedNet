@@ -1,57 +1,55 @@
 using CannedNet.Data;
-using CannedNet.Services.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CannedNet.Services.Controllers;
 
-public class RoomsController
+[ApiController, Route("rooms")]
+public class RoomsController : ControllerBase
 {
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
-
-    public void MapEndpoints(WebApplication app)
+    [HttpGet("rooms")]
+    public async Task<IResult> GetRooms(HttpRequest request, AppDbContext db)
     {
-        app.MapGet("/rooms", async (HttpRequest request, AppDbContext db) =>
+        var idParam = request.Query["id"].FirstOrDefault();
+        var nameParam = request.Query["name"].FirstOrDefault();
+
+        if (string.IsNullOrEmpty(idParam) && string.IsNullOrEmpty(nameParam))
+            return Results.BadRequest("Either 'id' or 'name' query parameter is required");
+
+        Room? result = null;
+
+        if (!string.IsNullOrEmpty(idParam))
         {
-            var idParam = request.Query["id"].FirstOrDefault();
-            var nameParam = request.Query["name"].FirstOrDefault();
-
-            if (string.IsNullOrEmpty(idParam) && string.IsNullOrEmpty(nameParam))
-                return Results.BadRequest("Either 'id' or 'name' query parameter is required");
-
-            Room? result = null;
-
-            if (!string.IsNullOrEmpty(idParam))
-            {
-                var ids = idParam.Split(',').Select(s => int.TryParse(s.Trim(), out var i) ? i : -1).Where(i => i != -1).ToList();
-                result = db.Rooms.FirstOrDefault(r => ids.Contains(r.RoomId));
-            }
-            else if (!string.IsNullOrEmpty(nameParam))
-            {
-                var name = nameParam.Trim().ToLower();
-                result = db.Rooms.FirstOrDefault(r => r.Name.ToLower() == name);
-            }
-
-            if (result == null)
-                return Results.Json(new { });
-
-            return Results.Json(await BuildRoomResponse(result, db));
-        });
-
-        app.MapGet("/rooms/{roomId:int}", async (int roomId, AppDbContext db) =>
+            var ids = idParam.Split(',').Select(s => int.TryParse(s.Trim(), out var i) ? i : -1).Where(i => i != -1).ToList();
+            result = db.Rooms.FirstOrDefault(r => ids.Contains(r.RoomId));
+        }
+        else if (!string.IsNullOrEmpty(nameParam))
         {
-            var result = await db.Rooms.FirstOrDefaultAsync(r => r.RoomId == roomId);
-            if (result == null)
-                return Results.NotFound();
+            var name = nameParam.Trim().ToLower();
+            result = db.Rooms.FirstOrDefault(r => r.Name.ToLower() == name);
+        }
 
-            return Results.Json(await BuildRoomResponse(result, db));
-        });
-        
-        app.MapGet("/roomserver/rooms/createdby/me", async (HttpRequest request, AppDbContext db) =>
-        {
-            // TODO ADD FUNCTIONALITY
-            var json = File.ReadAllText("JSON/ownedrooms.json");
-            return Results.Content(json, "application/json");
-        });
+        if (result == null)
+            return Results.Json(new { });
+
+        return Results.Json(await BuildRoomResponse(result, db));
+    }
+
+    [HttpGet("rooms/{roomId:int}")]
+    public async Task<IResult> GetRoomById(int roomId, AppDbContext db)
+    {
+        var result = await db.Rooms.FirstOrDefaultAsync(r => r.RoomId == roomId);
+        if (result == null)
+            return Results.NotFound();
+
+        return Results.Json(await BuildRoomResponse(result, db));
+    }
+
+    [HttpGet("roomserver/rooms/createdby/me")]
+    public async Task<IResult> GetRoomsCreatedByMe()
+    {
+        var json = System.IO.File.ReadAllText("JSON/ownedrooms.json");
+        return Results.Content(json, "application/json");
     }
 
     private static async Task<object> BuildRoomResponse(Room result, AppDbContext db)

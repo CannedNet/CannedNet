@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using CannedNet.Services;
 
 namespace CannedNet;
 
@@ -14,7 +15,11 @@ public class JwtTokenService
 
     public JwtTokenService()
     {
-        _securityKey = new RsaSecurityKey(_rsa) { KeyId = KeyId };
+        var rsa = Signatures.GetRsaInstance() 
+                  ?? throw new InvalidOperationException("jwt - sigs service was not found");
+
+        _securityKey = new RsaSecurityKey(rsa) { KeyId = KeyId };
+        
         _signingCredentials = new SigningCredentials(_securityKey, SecurityAlgorithms.RsaSha256);
     }
 

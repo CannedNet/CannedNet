@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CannedNet.Services.Controllers;
 
 //TODO: proper NameServer configs
-[ApiController, Route("")]
+[ApiController, Route("ns")]
 public class NSController : ControllerBase
 {
     [HttpGet]

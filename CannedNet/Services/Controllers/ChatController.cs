@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
 
-[ApiController]
+[ApiController, Route("chat")]
 public class ChatController : ControllerBase
 {
     [HttpGet("thread")]

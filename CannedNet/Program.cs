@@ -2,8 +2,10 @@ using CannedNet.Data;
 using CannedNet.Hubs;
 using CannedNet.Services;
 using CannedNet.Services.Infrastructure;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CannedNet;
 
@@ -22,6 +24,7 @@ public static class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+
         
         builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.PropertyNamingPolicy = null);
         builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
@@ -29,6 +32,35 @@ public static class Program
         builder.Services.AddScoped<StorefrontFillService>();
         builder.Services.AddScoped<JwtTokenService>();
         builder.Services.AddSignalR();
+
+        builder.Services.AddAuthentication(options => 
+            { 
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                var rsa = Signatures.GetRsaInstance();
+                var securityKey = new RsaSecurityKey(rsa) { KeyId = "7C2F041398671515B0862CB23FAF95B03" };
+
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = securityKey,
+                    ValidateIssuer = true,
+                    ValidIssuer = "https://lapis.codes",
+                    ValidateAudience = true,
+                    ValidAudience = "https://lapis.codes/resources",
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+        
+                    // sub is account id
+                    NameClaimType = "sub",
+                    RoleClaimType = "role" 
+                }; 
+            });
+        
+        builder.Services.AddAuthorization();
         
         WebApplication app = builder.Build();
         
@@ -36,6 +68,8 @@ public static class Program
         app.UseHttpsRedirection();
         //app.UseRequestLogging();
         app.MapControllers();
+        app.UseAuthentication();
+        app.UseAuthorization();
         
         IHubContext<NotificationsHub> hubContext = app.Services.GetRequiredService<IHubContext<NotificationsHub>>();
         NotificationService.SetHubContext(hubContext);
