@@ -36,53 +36,6 @@ public class APIController
             Enabled = false
         }));
 
-        app.MapPost("/api/gamesight/event", async (HttpRequest request) =>
-        {
-            string? eventType = null;
-            string? userId = null;
-            string? identifiers = null;
-
-            if (request.HasFormContentType)
-            {
-                var form = await request.ReadFormAsync();
-                var eventData = form["EventData"].ToString();
-
-                if (!string.IsNullOrWhiteSpace(eventData))
-                {
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(eventData);
-                        var root = doc.RootElement;
-
-                        if (root.TryGetProperty("type", out var typeProp))
-                            eventType = typeProp.GetString();
-
-                        if (root.TryGetProperty("user_id", out var userIdProp))
-                            userId = userIdProp.GetString();
-
-                        if (root.TryGetProperty("transaction_id", out var transactionProp))
-                            identifiers = transactionProp.GetString();
-                    }
-                    catch (JsonException)
-                    {
-                    }
-                }
-            }
-
-            var createdAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
-
-            return Results.Json(new
-            {
-                @event = new
-                {
-                    created_at = createdAt,
-                    identifiers = identifiers ?? "",
-                    type = string.IsNullOrWhiteSpace(eventType) ? "game_launch" : eventType,
-                    user_id = string.IsNullOrWhiteSpace(userId) ? "0" : userId
-                }
-            });
-        });
-
         app.MapGet("/api/config/v2", () => Results.Content(File.ReadAllText("JSON/configv2.json"), "application/json"));
         
         app.MapGet("/api/versioncheck/v4", () => Results.Ok(new
