@@ -1,63 +1,58 @@
-using CannedNet;
 using CannedNet.Data;
 using Microsoft.EntityFrameworkCore;
-using CannedNet.Services;
-using CannedNet.Services.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
 
-public class AuthController
+[ApiController]
+public class AuthController : ControllerBase
 {
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
+    [HttpGet("eac/challenge")]
+    public async Task<IResult> EacChallenge() {
+        string file = await System.IO.File.ReadAllTextAsync("JSON/eacchallenge.txt");
+        return Results.Content(file, "text/plain");
+    }
 
-    public void MapEndpoints(WebApplication app)
-    {
-        var jwtService = app.Services.GetRequiredService<JwtTokenService>();
-
-        app.MapGet("/eac/challenge", () =>
-        {
-            var file = File.ReadAllText("JSON/eacchallenge.txt");
-            return Results.Content(file, "text/plain");
-        });
-        
-        app.MapGet("/cachedlogin/forplatformid/{platform}/{id}", async (string platform, string id, AppDbContext db) =>
-        {
-            var platformType = int.Parse(platform);
-            var logins = await db.CachedLogins
-                .Where(c => c.Platform == (PlatformType)platformType && c.PlatformID == id)
-                .ToListAsync();
+    [HttpGet("cachedlogin/forplatformid/{platform}/{id}")]
+    public async Task<IResult> CachedLoginForPlatformId(string platform, string id, AppDbContext db) {
+        int platformType = int.Parse(platform);
+        List<CachedLogin> logins = await db.CachedLogins
+            .Where(c => c.Platform == (PlatformType)platformType && c.PlatformID == id)
+            .ToListAsync();
     
-            return Results.Json(logins.Any() ? logins : new List<object>());
-        });
-        
-        app.MapPost("/connect/token", async (HttpRequest httpRequest, AppDbContext db) =>
-        {
+        return Results.Json(logins.Any() ? logins : new List<object>());
+    }
+
+    [HttpPost("connect/token")]
+    public async Task<IResult> ConnectToken(HttpRequest httpRequest, AppDbContext db, JwtTokenService jwtService) {
             string accountId = "";
             string platformId = "";
             string platform = "";
 
-            if (httpRequest.ContentLength.HasValue && httpRequest.ContentLength > 0)
+            if (httpRequest.ContentLength is > 0)
             {
                 try
                 {
                     httpRequest.EnableBuffering();
-                    using var reader = new StreamReader(httpRequest.Body, leaveOpen: true);
-                    var body = await reader.ReadToEndAsync();
+                    using StreamReader reader = new (httpRequest.Body, leaveOpen: true);
+                    string body = await reader.ReadToEndAsync();
                     
                     if (!string.IsNullOrWhiteSpace(body))
                     {
-                        foreach (var pair in body.Split('&'))
+                        foreach (string pair in body.Split('&'))
                         {
-                            var keyValue = pair.Split('=');
-                            if (keyValue.Length == 2)
-                            {
-                                var key = Uri.UnescapeDataString(keyValue[0]);
-                                var value = Uri.UnescapeDataString(keyValue[1]);
+                            string[] keyValue = pair.Split('=');
+                            if (keyValue.Length != 2) continue;
+                            string key = Uri.UnescapeDataString(keyValue[0]);
+                            string value = Uri.UnescapeDataString(keyValue[1]);
 
-                                if (key == "account_id")
+                            switch (key) {
+                                case "account_id":
                                     accountId = value;
-                                else if (key == "platform_id")
+                                    break;
+                                case "platform_id":
                                     platformId = value;
+                                    break;
                             }
                         }
                     }
@@ -66,11 +61,11 @@ public class AuthController
                 catch { }
             }
 
-            var accessToken = jwtService.GenerateToken(accountId, platformId, platform);
+            string accessToken = jwtService.GenerateToken(accountId, platformId, platform);
             
             if (!string.IsNullOrEmpty(accountId) && int.TryParse(accountId, out var id))
             {
-                var roomInstance = await db.RoomInstances.FirstOrDefaultAsync(r => r.OwnerAccountId == id);
+                RoomInstance? roomInstance = await db.RoomInstances.FirstOrDefaultAsync(r => r.OwnerAccountId == id);
                 if (roomInstance != null)
                 {
                     db.RoomInstances.Remove(roomInstance);
@@ -87,48 +82,46 @@ public class AuthController
                 scope = "offline_access profile rn rn.accounts rn.accounts.gc rn.api rn.chat rn.clubs rn.commerce rn.match.read rn.match.write rn.notify rn.rooms rn.storage",
                 key = "8oQ+e+WQaOBPbEcakhqs3dwZZdOmmyDUmJSD9u4AHMY="
             });
-        });
+    }
+
+    [HttpPost("api/accounts/v1/forplatformids")]
+    public async Task<IResult> AccountsForPlatformIds(HttpRequest request, AppDbContext db) {
         
-        app.MapGet("/role/developer/{id}", async (HttpRequest request, AppDbContext db, string id) =>
+        request.EnableBuffering();
+        request.Body.Position = 0;
+        using var reader = new StreamReader(request.Body);
+        string body = await reader.ReadToEndAsync();
+            
+        List<string> ids = [];
+            
+        if (!string.IsNullOrWhiteSpace(body))
         {
-            // TODO: implement
-            return Results.Ok(RecNetResult.Ok());
-        });
-        
-        app.MapPost("/api/accounts/v1/forplatformids", async (HttpRequest request, AppDbContext db) =>
+            foreach (string pair in body.Split('&'))
+            {
+                string[] keyValue = pair.Split('=');
+                if (keyValue.Length != 2 || keyValue[0] != "Ids") continue;
+                
+                string idString = Uri.UnescapeDataString(keyValue[1]);
+                ids = idString.Split(',').ToList();
+                break;
+            }
+        }
+            
+        List<object> results = [];
+        foreach (string platformId in ids)
         {
-            request.EnableBuffering();
-            request.Body.Position = 0;
-            using var reader = new StreamReader(request.Body);
-            var body = await reader.ReadToEndAsync();
-            
-            var ids = new List<string>();
-            
-            if (!string.IsNullOrWhiteSpace(body))
+            CachedLogin? cachedLogin = await db.CachedLogins.FirstOrDefaultAsync(c => c.PlatformID == platformId);
+            if (cachedLogin != null)
             {
-                foreach (var pair in body.Split('&'))
-                {
-                    var keyValue = pair.Split('=');
-                    if (keyValue.Length == 2 && keyValue[0] == "Ids")
-                    {
-                        var idString = Uri.UnescapeDataString(keyValue[1]);
-                        ids = idString.Split(',').ToList();
-                        break;
-                    }
-                }
+                results.Add(new { accountId = cachedLogin.AccountId, platformId = platformId });
             }
+        }
             
-            var results = new List<object>();
-            foreach (var platformId in ids)
-            {
-                var cachedLogin = await db.CachedLogins.FirstOrDefaultAsync(c => c.PlatformID == platformId);
-                if (cachedLogin != null)
-                {
-                    results.Add(new { accountId = cachedLogin.AccountId, platformId = platformId });
-                }
-            }
-            
-            return Results.Json(results);
-        });
+        return Results.Json(results);
+    }
+
+    [HttpGet("role/developer/{id}")]
+    public async Task<IResult> GetDeveloperRole(string id) {
+        return Results.Ok(RecNetResult.Ok());
     }
 }
