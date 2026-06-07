@@ -1,116 +1,113 @@
-using CannedNet;
 using CannedNet.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using CannedNet.Hubs;
 using CannedNet.Models;
-using Microsoft.AspNetCore.SignalR;
-using CannedNet.Services;
-using CannedNet.Services.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
 
-public class APIController
+[ApiController, Route("api")]
+public class APIController : ControllerBase
 {
-    public WebApplicationBuilder Initialize(string[]? args = null) => ServiceExtensions.CreateRecNetBuilder(args);
-
-    public void MapEndpoints(WebApplication app)
-    {
-        var jwtService = app.Services.GetRequiredService<JwtTokenService>();
-        var storefrontService = app.Services.GetRequiredService<StorefrontFillService>();
-        var notificationService = app.Services.GetRequiredService<NotificationService>();
-
-        app.MapGet("/api/config/v1/amplitude", () => Results.Ok(new
-        {
+    [HttpGet("config/v1/amplitude")]
+    public async Task<IResult> Amplitude() {
+        return Results.Ok(new {
             AmplitudeKey = "a",
             StatSigKey = "a",
             RudderStackKey = "a",
             UseRudderStack = false
-        }));
+        });
+    }
 
-        app.MapGet("/api/config/v1/azurespeech", () => Results.Ok(new
-        {
+    [HttpGet("config/v1/azurespeech")]
+    public async Task<IResult> AzureSpeech() {
+        return Results.Ok(new {
             Key = "dce8de5b297747d9b5bddcc7f19e8c5b",
             Region = "eastus",
             Enabled = false
-        }));
+        });
+    }
 
-        app.MapPost("/api/gamesight/event", async (HttpRequest request) =>
+    [HttpPost("gamesight/event")]
+    public async Task<IResult> Event(HttpRequest request) {
+        string? eventType = null;
+        string? userId = null;
+        string? identifiers = null;
+
+        if (request.HasFormContentType)
         {
-            string? eventType = null;
-            string? userId = null;
-            string? identifiers = null;
+            IFormCollection form = await request.ReadFormAsync();
+            string eventData = form["EventData"].ToString();
 
-            if (request.HasFormContentType)
+            if (!string.IsNullOrWhiteSpace(eventData))
             {
-                var form = await request.ReadFormAsync();
-                var eventData = form["EventData"].ToString();
-
-                if (!string.IsNullOrWhiteSpace(eventData))
+                try
                 {
-                    try
-                    {
-                        using var doc = JsonDocument.Parse(eventData);
-                        var root = doc.RootElement;
+                    using JsonDocument doc = JsonDocument.Parse(eventData);
+                    JsonElement root = doc.RootElement;
 
-                        if (root.TryGetProperty("type", out var typeProp))
-                            eventType = typeProp.GetString();
+                    if (root.TryGetProperty("type", out JsonElement typeProp))
+                        eventType = typeProp.GetString();
 
-                        if (root.TryGetProperty("user_id", out var userIdProp))
-                            userId = userIdProp.GetString();
+                    if (root.TryGetProperty("user_id", out JsonElement userIdProp))
+                        userId = userIdProp.GetString();
 
-                        if (root.TryGetProperty("transaction_id", out var transactionProp))
-                            identifiers = transactionProp.GetString();
-                    }
-                    catch (JsonException)
-                    {
-                    }
+                    if (root.TryGetProperty("transaction_id", out JsonElement transactionProp))
+                        identifiers = transactionProp.GetString();
+                }
+                catch (JsonException)
+                {
                 }
             }
+        }
 
-            var createdAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        string createdAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
 
-            return Results.Json(new
+        return Results.Json(new
+        {
+            @event = new
             {
-                @event = new
-                {
-                    created_at = createdAt,
-                    identifiers = identifiers ?? "",
-                    type = string.IsNullOrWhiteSpace(eventType) ? "game_launch" : eventType,
-                    user_id = string.IsNullOrWhiteSpace(userId) ? "0" : userId
-                }
-            });
+                created_at = createdAt,
+                identifiers = identifiers ?? "",
+                type = string.IsNullOrWhiteSpace(eventType) ? "game_launch" : eventType,
+                user_id = string.IsNullOrWhiteSpace(userId) ? "0" : userId
+            }
         });
+    }
 
-        app.MapGet("/api/config/v2", () => Results.Content(File.ReadAllText("JSON/configv2.json"), "application/json"));
-        
-        app.MapGet("/api/versioncheck/v4", () => Results.Ok(new
-        {
-            VersionStatus = 0,
-            UpdateNotificationStage = 0,
-            IsVersionIslanded = false,
-            IsCrossPlayDisabled = false
-        }));
-        
-        app.MapGet("/api/gameconfigs/v1/all", () => Results.Content(File.ReadAllText("JSON/gameconfigs.json"), "application/json"));
+    [HttpGet("config/v2")]
+    public async Task<IResult> ConfigV2() => Results.Content(await System.IO.File.ReadAllTextAsync("JSON/configv2.json"), "application/json");
 
-        app.MapGet("/api/relationships/v2/get", () => Results.Content("[]", "application/json"));
-        app.MapGet("/api/messages/v2/get", () => Results.Content("[]", "application/json"));
+    [HttpGet("gameconfigs/v1/all")]
+    public async Task<IResult> GameConfigsV1All() => Results.Content(await System.IO.File.ReadAllTextAsync("JSON/gameconfigs.json"), "application/json");
+    
+    [HttpGet("versioncheck/v4")]
+    public async Task<IResult> VersionCheckV4() => Results.Ok(new {
+        VersionStatus = 0,
+        UpdateNotificationStage = 0,
+        IsVersionIslanded = false,
+        IsCrossPlayDisabled = false
+    });
 
-        app.MapGet("/api/playerReputation/v1/{id}", (string id) => 
-            Results.Content($"{{\"AccountId\":{id},\"Noteriety\":0,\"CheerGeneral\":0,\"CheerHelpful\":0,\"CheerCreative\":0,\"CheerGreatHost\":0,\"CheerSportsman\":0,\"CheerCredit\":20,\"SelectedCheer\":null}}", "application/json"));
+    [HttpGet("relationships/v2/get")]
+    public async Task<IResult> GetRelationShipsV2() => Results.Content("[]", "application/json");
 
-        app.MapGet("/api/players/v1/progression/{id}", (string id) => 
-            Results.Content($"{{\"PlayerId\":{id},\"Level\":1,\"XP\":0}}", "application/json"));
+    [HttpGet("messages/v2/get")]
+    public async Task<IResult> GetMessagesV2() => Results.Content("[]", "application/json");
+    
+    [HttpGet("playerReputation/v1/{id}")]
+    public async Task<IResult> GetPlayersV1Reputation(string id) => Results.Content($"{{\"AccountId\":{id},\"Noteriety\":0,\"CheerGeneral\":0,\"CheerHelpful\":0,\"CheerCreative\":0,\"CheerGreatHost\":0,\"CheerSportsman\":0,\"CheerCredit\":20,\"SelectedCheer\":null}}", "application/json");
+    
+    [HttpGet("players/v1/progression/{id}")]
+    public async Task<IResult> GetPlayersV1Progression(string id) => Results.Content($"{{\"PlayerId\":{id},\"Level\":1,\"XP\":0}}", "application/json");
 
-        app.MapPost("/api/playerReputation/v2/bulk", async (HttpRequest httpRequest, AppDbContext db) =>
-        {
-            /*var ids = await ParseFormIds(httpRequest);
-            
+    [HttpPost("playerReputation/v2/bulk")]
+    public async Task<IResult> PostPlayerReputationV2Bulk(HttpRequest httpRequest, AppDbContext db) {
+        /*var ids = await ParseFormIds(httpRequest);
+
             if (!ids.Any())
                 return Results.Json(new List<object>());
-            
+
             var reputations = ids.Select(id => new
             {
                 AccountId = id,
@@ -123,65 +120,62 @@ public class APIController
                 CheerCredit = 20,
                 SelectedCheer = (object?)null
             }).ToList();
-            
+
             return Results.Json(reputations);*/
 
-            // TODO: implement real endpoint from grabbing from db
-            var json = File.ReadAllText("JSON/bulkprogression.json");
-            return Results.Content(json, "application/json");
-        });
+        //TODO: implement real endpoint from grabbing from db
+        string json = await System.IO.File.ReadAllTextAsync("JSON/bulkprogression.json");
+        return Results.Content(json, "application/json");
+    }
 
-        app.MapPost("/api/players/v2/progression/bulk", async (HttpRequest httpRequest, AppDbContext db) =>
-        {
-            var ids = await ParseFormIds(httpRequest);
+    [HttpPost("players/v2/progression/bulk")]
+    public async Task<IResult> PostProgressionBulkV2(HttpRequest httpRequest, AppDbContext db) {
+        List<int> ids = await ParseFormIds(httpRequest);
             
-            if (!ids.Any())
-                return Results.Json(new List<PlayerProgressionBulkResponse>());
+        if (!ids.Any())
+            return Results.Json(new List<PlayerProgressionBulkResponse>());
             
-            var progressions = await db.PlayerProgressions
-                .Where(p => ids.Contains(p.PlayerId))
-                .Select(p => new PlayerProgressionBulkResponse { PlayerId = p.PlayerId, Level = p.Level, Xp = p.Xp })
-                .ToListAsync();
+        List<PlayerProgressionBulkResponse> progressions = await db.PlayerProgressions
+            .Where(p => ids.Contains(p.PlayerId))
+            .Select(p => new PlayerProgressionBulkResponse { PlayerId = p.PlayerId, Level = p.Level, Xp = p.Xp })
+            .ToListAsync();
             
-            return Results.Json(progressions);
-        });
+        return Results.Json(progressions);
+    }
 
-        app.MapPost("/api/v1/progression/bulk", async (HttpRequest httpRequest, AppDbContext db) =>
-        {
-            var ids = await ParseFormIds(httpRequest);
-            
-            if (!ids.Any())
-                return Results.Json(new List<PlayerProgressionBulkResponse>());
-            
-            var progressions = await db.PlayerProgressions
-                .Where(p => ids.Contains(p.PlayerId))
-                .Select(p => new PlayerProgressionBulkResponse { PlayerId = p.PlayerId, Level = p.Level, Xp = p.Xp })
-                .ToListAsync();
-            
-            return Results.Json(progressions);
-        });
-        
-        app.MapGet("/api/avatar/v4/items", async (HttpRequest request, AppDbContext db) =>
-        {
-            var authHeader = request.Headers.Authorization.ToString();
+    [HttpPost("v1/progression/bulk")]
+    public async Task<IResult> PostProgressionBulkV1(HttpRequest httpRequest, AppDbContext db) {
+        List<int> ids = await ParseFormIds(httpRequest);
+
+        if (!ids.Any())
+            return Results.Json(new List<PlayerProgressionBulkResponse>());
+
+        List<PlayerProgressionBulkResponse> progressions = await db.PlayerProgressions
+            .Where(p => ids.Contains(p.PlayerId))
+            .Select(p => new PlayerProgressionBulkResponse { PlayerId = p.PlayerId, Level = p.Level, Xp = p.Xp })
+            .ToListAsync();
+
+        return Results.Json(progressions);
+    }
+
+    [HttpGet("avatar/v4/items")]
+    public async Task<IResult> GetAvatarItemsV4(HttpRequest request, AppDbContext db, JwtTokenService jwtService) {
+            string authHeader = request.Headers.Authorization.ToString();
     
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 return Results.Unauthorized();
 
-            var token = authHeader.Substring("Bearer ".Length);
-            var accountId = jwtService.ValidateAndGetAccountId(token);
+            string token = authHeader.Substring("Bearer ".Length);
+            string? accountId = jwtService.ValidateAndGetAccountId(token);
 
-            if (string.IsNullOrEmpty(accountId))
+            if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId.AsSpan(), out int id))
                 return Results.Unauthorized();
 
-            if (!int.TryParse(accountId.AsSpan(), out var id))
-                return Results.Unauthorized();
-            
-            var ownedItems = await db.AvatarItems
+            List<AvatarItem> ownedItems = await db.AvatarItems
                 .Where(i => i.OwnerAccountId == id)
                 .ToListAsync();
 
-            var defaultItems = new List<object>
+            List<object> defaultItems = new List<object>
             {
                 new { AvatarItemType = 0, AvatarItemDesc = "5d13a7a2-8213-40e6-90a6-efdd76a3fdcb,,,", PlatformMask = -1, FriendlyName = "Flowing Hair", Tooltip = "", Rarity = 0 },
                 new { AvatarItemType = 0, AvatarItemDesc = "1d27b674-f9e2-4ffc-9d8c-a58a1be06457,,,", PlatformMask = -1, FriendlyName = "Afro Hair", Tooltip = "", Rarity = 0 },
@@ -338,52 +332,55 @@ public class APIController
                 new { AvatarItemType = 0, AvatarItemDesc = "9b5bde11-7408-4798-9fcb-c7ec175444df,,,", PlatformMask = -1, FriendlyName = "Hoop Earrings", Tooltip = "", Rarity = 0 }
             };
 
-            var allItems = ownedItems.Cast<object>().Concat(defaultItems).ToList();
+            List<object> allItems = ownedItems.Concat(defaultItems).ToList();
             
             return Results.Json(allItems);
-        });
+        }
 
-        app.MapGet("/api/avatar/v2", async (HttpRequest request, AppDbContext db) =>
-        {
-            var authHeader = request.Headers.Authorization.ToString();
+    [HttpGet("avatar/v2")]
+    public async Task<IResult> GetAvatarV2(HttpRequest request, AppDbContext db, JwtTokenService jwtService) {
+        string authHeader = request.Headers.Authorization.ToString();
     
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                return Results.Unauthorized();
+        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            return Results.Unauthorized();
 
-            var token = authHeader.Substring("Bearer ".Length);
-            var accountId = jwtService.ValidateAndGetAccountId(token);
+        string token = authHeader.Substring("Bearer ".Length);
+        string? accountId = jwtService.ValidateAndGetAccountId(token);
 
-            if (string.IsNullOrEmpty(accountId))
-                return Results.Unauthorized();
+        if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId.AsSpan(), out var id))
+            return Results.Unauthorized();
 
-            if (!int.TryParse(accountId.AsSpan(), out var id))
-                return Results.Unauthorized();
+        PlayerAvatar? avatar = await db.PlayerAvatars.FirstOrDefaultAsync(a => a.OwnerAccountId == id);
             
-            var avatar = await db.PlayerAvatars
-                .FirstOrDefaultAsync(a => a.OwnerAccountId == id);
-            
-            if (avatar == null)
+        if (avatar == null)
+        {
+            avatar = new PlayerAvatar
             {
-                avatar = new PlayerAvatar
-                {
-                    OwnerAccountId = id,
-                    OutfitSelections = "",
-                    FaceFeatures = "{}",
-                    SkinColor = "",
-                    HairColor = ""
-                };
-                db.PlayerAvatars.Add(avatar);
-                await db.SaveChangesAsync();
-            }
+                OwnerAccountId = id,
+                OutfitSelections = "",
+                FaceFeatures = "{}",
+                SkinColor = "",
+                HairColor = ""
+            };
+            db.PlayerAvatars.Add(avatar);
+            await db.SaveChangesAsync();
+        }
             
-            return Results.Json(new
-            {
-                OutfitSelections = avatar.OutfitSelections,
-                FaceFeatures = avatar.FaceFeatures,
-                SkinColor = avatar.SkinColor,
-                HairColor = avatar.HairColor
-            });
+        return Results.Json(new
+        {
+            OutfitSelections = avatar.OutfitSelections,
+            FaceFeatures = avatar.FaceFeatures,
+            SkinColor = avatar.SkinColor,
+            HairColor = avatar.HairColor
         });
+    }
+    
+    
+    
+    public void MapEndpoints(WebApplication app) {
+        var jwtService = app.Services.GetRequiredService<JwtTokenService>();
+        var storefrontService = app.Services.GetRequiredService<StorefrontFillService>();
+        var notificationService = app.Services.GetRequiredService<NotificationService>();
 
         app.MapPost("/api/avatar/v2/set", async (HttpRequest request, AppDbContext db) =>
         {
@@ -430,7 +427,7 @@ public class APIController
         
         app.MapGet("/api/PlayerReporting/v1/voteToKickReasons", async (HttpRequest request, AppDbContext db) =>
         {
-            var json = File.ReadAllText("JSON/vtkreasons.json");
+            var json = System.IO.File.ReadAllText("JSON/vtkreasons.json");
             return Results.Content(json, "application/json");
         });
 
@@ -556,12 +553,12 @@ public class APIController
         app.MapGet("/api/objectives/v1/myprogress", async (HttpRequest request, AppDbContext db) =>
         {
             // TODO ADD FUNCTIONALITY
-            var json = File.ReadAllText("JSON/tempmyprogress.json");
+            var json = System.IO.File.ReadAllText("JSON/tempmyprogress.json");
             return Results.Content(json, "application/json");
         });
         app.MapGet("/api/communityboard/v2/current", async (HttpRequest request, AppDbContext db) =>
         {
-            var json = File.ReadAllText("JSON/communityboard.json");
+            var json = System.IO.File.ReadAllText("JSON/communityboard.json");
             return Results.Content(json, "application/json");
         });
         app.MapGet("/api/playerevents/v1/all", async (HttpRequest request, AppDbContext db) =>
@@ -575,7 +572,7 @@ public class APIController
         });
         app.MapGet("/api/announcement/v1/get", async (HttpRequest request, AppDbContext db) =>
         {
-            var json = File.ReadAllText("JSON/announcements.json");
+            var json = System.IO.File.ReadAllText("JSON/announcements.json");
             return Results.Content(json, "application/json");
         });
         app.MapGet("/api/quickPlay/v1/getandclear", async (HttpRequest request, AppDbContext db) =>
@@ -1041,7 +1038,7 @@ public class APIController
         });
         app.MapGet("/api/images/v2/named", async (HttpRequest request, AppDbContext db) =>
         {
-            var json = File.ReadAllText("JSON/namedimages.json");
+            var json = System.IO.File.ReadAllText("JSON/namedimages.json");
             return Results.Content(json, "application/json");
         });
         app.MapPost("/api/objectives/v1/updateobjective", async (HttpRequest request, AppDbContext db) =>
@@ -1060,7 +1057,7 @@ public class APIController
             var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 300 && s.Name == "rc_cafe_storefront");
             if (storefront == null)
             {
-                var json = File.ReadAllText("JSON/cafestorefront.json");
+                var json = System.IO.File.ReadAllText("JSON/cafestorefront.json");
                 return Results.Content(json, "application/json");
             }
             var storeItems = storefront.Items.Select(item => new
@@ -1111,7 +1108,7 @@ public class APIController
             var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "rec_center_store");
             if (storefront == null)
             {
-                var json = File.ReadAllText("JSON/storefront12.json");
+                var json = System.IO.File.ReadAllText("JSON/storefront12.json");
                 return Results.Content(json, "application/json");
             }
             var storeItems = storefront.Items.Select(item => new
@@ -1608,7 +1605,7 @@ public class APIController
         });
         app.MapGet("/api/rooms/v1/filters", async (HttpRequest request, AppDbContext db) =>
         {
-            var json = File.ReadAllText("JSON/roomfilters.json");
+            var json = System.IO.File.ReadAllText("JSON/roomfilters.json");
             return Results.Content(json, "application/json");
         });
         app.MapGet("/roomserver/rooms/{id}/interactionby/me", async (HttpRequest request, AppDbContext db, string id) =>
@@ -1640,7 +1637,7 @@ public class APIController
                 var savedFileName = imageId + extension;
                 var filePath = Path.Combine(ImagesDir, savedFileName);
 
-                using (var fileStream = File.Create(filePath))
+                using (var fileStream = System.IO.File.Create(filePath))
                 {
                     await file.CopyToAsync(fileStream);
                 }
