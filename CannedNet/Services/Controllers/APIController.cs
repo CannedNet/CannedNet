@@ -28,53 +28,6 @@ public class APIController : ControllerBase
         });
     }
 
-    [HttpPost("gamesight/event")]
-    public async Task<IResult> Event(HttpRequest request) {
-        string? eventType = null;
-        string? userId = null;
-        string? identifiers = null;
-
-        if (request.HasFormContentType)
-        {
-            IFormCollection form = await request.ReadFormAsync();
-            string eventData = form["EventData"].ToString();
-
-            if (!string.IsNullOrWhiteSpace(eventData))
-            {
-                try
-                {
-                    using JsonDocument doc = JsonDocument.Parse(eventData);
-                    JsonElement root = doc.RootElement;
-
-                    if (root.TryGetProperty("type", out JsonElement typeProp))
-                        eventType = typeProp.GetString();
-
-                    if (root.TryGetProperty("user_id", out JsonElement userIdProp))
-                        userId = userIdProp.GetString();
-
-                    if (root.TryGetProperty("transaction_id", out JsonElement transactionProp))
-                        identifiers = transactionProp.GetString();
-                }
-                catch (JsonException)
-                {
-                }
-            }
-        }
-
-        string createdAt = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
-
-        return Results.Json(new
-        {
-            @event = new
-            {
-                created_at = createdAt,
-                identifiers = identifiers ?? "",
-                type = string.IsNullOrWhiteSpace(eventType) ? "game_launch" : eventType,
-                user_id = string.IsNullOrWhiteSpace(userId) ? "0" : userId
-            }
-        });
-    }
-
     [HttpGet("config/v2")]
     public async Task<IResult> ConfigV2() => Results.Content(await System.IO.File.ReadAllTextAsync("JSON/configv2.json"), "application/json");
 
