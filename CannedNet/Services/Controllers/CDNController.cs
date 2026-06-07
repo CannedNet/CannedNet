@@ -1,4 +1,5 @@
 ﻿using CannedNet.Services.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
@@ -29,6 +30,7 @@ public class CDNController
     }
 
     [HttpPost("upload")]
+    [Authorize]
     public async Task<IResult> Upload(IFormFile file)
     {
         try
