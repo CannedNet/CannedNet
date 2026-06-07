@@ -1,4 +1,4 @@
-using CannedNet.Hubs;
+/*using CannedNet.Hubs;
 using CannedNet.Services.Infrastructure;
 using Microsoft.AspNetCore.SignalR;
 
@@ -16,3 +16,4 @@ public class NotifyController
         NotificationService.SetHubContext(hubContext);
     }
 }
+*/
