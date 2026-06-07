@@ -8,7 +8,7 @@ namespace CannedNet.Services.Controllers;
 [ApiController, Route("playersettings")]
 public class PlayerSettingsController : ControllerBase
 {
-    [HttpGet("playersettings")]
+    [HttpGet("/playersettings")]
     [Authorize]
     public async Task<IResult> GetPlayerSettings(AppDbContext db)
     {
@@ -63,18 +63,18 @@ public class PlayerSettingsController : ControllerBase
         return Results.Json(settings);
     }
 
-    [HttpPut("playersettings")]
+    [HttpPut("/playersettings")]
     [Authorize]
-    public async Task<IResult> PutPlayerSettings(HttpRequest request, AppDbContext db)
+    public async Task<IResult> PutPlayerSettings(AppDbContext db)
     {
         if (!int.TryParse(User.Identity?.Name, out var id))
             return Results.Unauthorized();
 
         var settings = new List<PlayerSetting>();
 
-        if (request.ContentType?.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true)
+        if (HttpContext.Request.ContentType?.Contains("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase) == true)
         {
-            var form = await request.ReadFormAsync();
+            var form = await HttpContext.Request.ReadFormAsync();
             var key = form["key"].FirstOrDefault();
             var value = form["value"].FirstOrDefault();
             if (!string.IsNullOrEmpty(key))
@@ -82,11 +82,11 @@ public class PlayerSettingsController : ControllerBase
         }
         else
         {
-            request.EnableBuffering();
-            request.Body.Position = 0;
-            using var reader = new StreamReader(request.Body, leaveOpen: true);
+            HttpContext.Request.EnableBuffering();
+            HttpContext.Request.Body.Position = 0;
+            using var reader = new StreamReader(HttpContext.Request.Body, leaveOpen: true);
             var body = await reader.ReadToEndAsync();
-            request.Body.Position = 0;
+            HttpContext.Request.Body.Position = 0;
 
             Console.WriteLine($"Settings request body: {body}");
 

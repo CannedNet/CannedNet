@@ -24,17 +24,17 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("connect/token")]
-    public async Task<IResult> ConnectToken(HttpRequest httpRequest, AppDbContext db, JwtTokenService jwtService) {
+    public async Task<IResult> ConnectToken(AppDbContext db, JwtTokenService jwtService) {
             string accountId = "";
             string platformId = "";
             string platform = "";
 
-            if (httpRequest.ContentLength is > 0)
+            if (HttpContext.Request.ContentLength is > 0)
             {
                 try
                 {
-                    httpRequest.EnableBuffering();
-                    using StreamReader reader = new (httpRequest.Body, leaveOpen: true);
+                    HttpContext.Request.EnableBuffering();
+                    using StreamReader reader = new (HttpContext.Request.Body, leaveOpen: true);
                     string body = await reader.ReadToEndAsync();
                     
                     if (!string.IsNullOrWhiteSpace(body))
@@ -56,7 +56,7 @@ public class AuthController : ControllerBase
                             }
                         }
                     }
-                    httpRequest.Body.Position = 0;
+                    HttpContext.Request.Body.Position = 0;
                 }
                 catch { }
             }
@@ -85,11 +85,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("api/accounts/v1/forplatformids")]
-    public async Task<IResult> AccountsForPlatformIds(HttpRequest request, AppDbContext db) {
+    public async Task<IResult> AccountsForPlatformIds(AppDbContext db) {
         
-        request.EnableBuffering();
-        request.Body.Position = 0;
-        using var reader = new StreamReader(request.Body);
+        HttpContext.Request.EnableBuffering();
+        HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(HttpContext.Request.Body);
         string body = await reader.ReadToEndAsync();
             
         List<string> ids = [];

@@ -33,11 +33,11 @@ public class JwtTokenService
         
         var claims = new List<Claim>
         {
-            new Claim("iss", "https://api.lapis.codes"),
+            new Claim("iss", "https://lapis.codes"),
             new Claim("nbf", ((DateTimeOffset)now).ToUnixTimeSeconds().ToString()),
             new Claim("iat", ((DateTimeOffset)now).ToUnixTimeSeconds().ToString()),
             new Claim("exp", ((DateTimeOffset)exp).ToUnixTimeSeconds().ToString()),
-            new Claim("aud", "https://api.lapis.codes/resources"),
+            new Claim("aud", "https://lapis.codes/resources"),
             new Claim("amr", "cached_login"),
             new Claim("client_id", "recroom"),
             new Claim("sub", accountId),

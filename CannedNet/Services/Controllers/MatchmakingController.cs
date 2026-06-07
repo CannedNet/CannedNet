@@ -23,9 +23,9 @@ public class MatchmakingController : ControllerBase
     }
 
     [HttpGet("player")]
-    public async Task<IResult> GetPlayer(HttpRequest request, AppDbContext db)
+    public async Task<IResult> GetPlayer(AppDbContext db)
     {
-        var id = request.Query["id"].FirstOrDefault();
+        var id = HttpContext.Request.Query["id"].FirstOrDefault();
         if (string.IsNullOrEmpty(id) || !int.TryParse(id, out var accountId))
         {
                 var json = System.IO.File.ReadAllText("JSON/getplayer.json");
@@ -83,20 +83,20 @@ public class MatchmakingController : ControllerBase
 
     [HttpPost("goto/room/{room}")]
     [Authorize]
-    public async Task<IResult> GotoRoom(HttpRequest request, string room, AppDbContext db)
+    public async Task<IResult> GotoRoom(string room, AppDbContext db)
     {
         if (!int.TryParse(User.Identity?.Name, out var id))
             return Results.Unauthorized();
 
-        request.EnableBuffering();
-        request.Body.Position = 0;
-        var form = await request.ReadFormAsync();
+        HttpContext.Request.EnableBuffering();
+        HttpContext.Request.Body.Position = 0;
+        var form = await HttpContext.Request.ReadFormAsync();
         int joinMode = 0;
         if (int.TryParse(form["JoinMode"].ToString(), out var mode))
         {
             joinMode = mode;
         }
-        request.Body.Position = 0;
+        HttpContext.Request.Body.Position = 0;
 
         Room? roomData = null;
         var roomLower = room.ToLower();
@@ -223,20 +223,20 @@ public class MatchmakingController : ControllerBase
 
     [HttpPost("matchmake/{room}")]
     [Authorize]
-    public async Task<IResult> MatchmakeRoom(HttpRequest request, string room, AppDbContext db)
+    public async Task<IResult> MatchmakeRoom(string room, AppDbContext db)
     {
         if (!int.TryParse(User.Identity?.Name, out var id))
             return Results.Unauthorized();
 
-        request.EnableBuffering();
-        request.Body.Position = 0;
-        var form = await request.ReadFormAsync();
+        HttpContext.Request.EnableBuffering();
+        HttpContext.Request.Body.Position = 0;
+        var form = await HttpContext.Request.ReadFormAsync();
         int joinMode = 0;
         if (int.TryParse(form["JoinMode"].ToString(), out var mode))
         {
             joinMode = mode;
         }
-        request.Body.Position = 0;
+        HttpContext.Request.Body.Position = 0;
 
         Room? roomData = null;
         var roomLower = room.ToLower();
@@ -391,18 +391,18 @@ public class MatchmakingController : ControllerBase
 
     [HttpPost("player/heartbeat")]
     [Authorize]
-    public async Task<IResult> PlayerHeartbeat(HttpRequest request, AppDbContext db)
+    public async Task<IResult> PlayerHeartbeat(AppDbContext db)
     {
         if (!int.TryParse(User.Identity?.Name, out var id))
             return Results.Unauthorized();
 
-        request.EnableBuffering();
-        request.Body.Position = 0;
-        using var reader = new StreamReader(request.Body);
+        HttpContext.Request.EnableBuffering();
+        HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(HttpContext.Request.Body);
         var body = await reader.ReadToEndAsync();
 
-        request.Body.Position = 0;
-        var form = await request.ReadFormAsync();
+        HttpContext.Request.Body.Position = 0;
+        var form = await HttpContext.Request.ReadFormAsync();
         var loginLock = form["LoginLock"].ToString();
 
         HeartbeatRequest? heartbeat = null;

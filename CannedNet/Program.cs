@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CannedNet.Data;
 using CannedNet.Hubs;
 using CannedNet.Services;
@@ -47,18 +48,25 @@ public static class Program
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = securityKey,
-                    ValidateIssuer = true,
-                    ValidIssuer = "https://lapis.codes",
-                    ValidateAudience = true,
-                    ValidAudience = "https://lapis.codes/resources",
+            
+                    ValidateIssuer = false,
+                    ValidIssuer = "https://lapis.codes", 
+            
+                    ValidateAudience = false,
+                    ValidAudiences = new[] 
+                    { 
+                        "https://lapis.codes", 
+                        "https://lapis.codes/resources" 
+                    },
+            
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero,
-        
-                    // sub is account id
-                    NameClaimType = "sub",
+
+                    NameClaimType = ClaimTypes.NameIdentifier,
                     RoleClaimType = "role" 
                 }; 
             });
+
         
         builder.Services.AddAuthorization();
         
@@ -66,10 +74,10 @@ public static class Program
         
         app.MapHub<NotificationsHub>("/hub/v1");
         app.UseHttpsRedirection();
-        //app.UseRequestLogging();
-        app.MapControllers();
+        app.UseRequestLogging();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.MapControllers();
         
         IHubContext<NotificationsHub> hubContext = app.Services.GetRequiredService<IHubContext<NotificationsHub>>();
         NotificationService.SetHubContext(hubContext);

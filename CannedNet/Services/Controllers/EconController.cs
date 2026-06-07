@@ -238,14 +238,14 @@ public class EconController : ControllerBase
 
     [HttpPost("api/settings/v2/set")]
     [Authorize]
-    public async Task<IResult> SetSettings(HttpRequest request, AppDbContext db)
+    public async Task<IResult> SetSettings(AppDbContext db)
     {
         if (!int.TryParse(User.Identity?.Name, out var id))
             return Results.Unauthorized();
 
-        request.EnableBuffering();
-        request.Body.Position = 0;
-        using var reader = new StreamReader(request.Body);
+        HttpContext.Request.EnableBuffering();
+        HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(HttpContext.Request.Body);
         var body = await reader.ReadToEndAsync();
 
         Console.WriteLine($"Settings request body: {body}");
@@ -383,12 +383,10 @@ public class EconController : ControllerBase
 
     [HttpGet("api/avatar/v3/saved")]
     [Authorize]
-    public async Task<IResult> GetSavedAvatars(HttpRequest request, AppDbContext db)
+    public async Task<IResult> GetSavedAvatars(AppDbContext db)
     {
         if (!int.TryParse(User.Identity?.Name, out var id))
             return Results.Unauthorized();
-
-        request.EnableBuffering();
 
         var items = await db.SavedOutfits
             .Where(i => i.OwnerAccountId == id)

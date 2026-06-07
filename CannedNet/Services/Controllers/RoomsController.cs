@@ -8,10 +8,10 @@ namespace CannedNet.Services.Controllers;
 public class RoomsController : ControllerBase
 {
     [HttpGet("rooms")]
-    public async Task<IResult> GetRooms(HttpRequest request, AppDbContext db)
+    public async Task<IResult> GetRooms(AppDbContext db)
     {
-        var idParam = request.Query["id"].FirstOrDefault();
-        var nameParam = request.Query["name"].FirstOrDefault();
+        var idParam = HttpContext.Request.Query["id"].FirstOrDefault();
+        var nameParam = HttpContext.Request.Query["name"].FirstOrDefault();
 
         if (string.IsNullOrEmpty(idParam) && string.IsNullOrEmpty(nameParam))
             return Results.BadRequest("Either 'id' or 'name' query parameter is required");

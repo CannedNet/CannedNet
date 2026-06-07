@@ -56,7 +56,7 @@ public class APIController : ControllerBase
     public async Task<IResult> GetPlayersV1Progression(string id) => Results.Content($"{{\"PlayerId\":{id},\"Level\":1,\"XP\":0}}", "application/json");
 
     [HttpPost("playerReputation/v2/bulk")]
-    public async Task<IResult> PostPlayerReputationV2Bulk(HttpRequest httpRequest, AppDbContext db) {
+    public async Task<IResult> PostPlayerReputationV2Bulk(AppDbContext db) {
         /*var ids = await ParseFormIds(httpRequest);
 
             if (!ids.Any())
@@ -83,8 +83,8 @@ public class APIController : ControllerBase
     }
 
     [HttpPost("players/v2/progression/bulk")]
-    public async Task<IResult> PostProgressionBulkV2(HttpRequest httpRequest, AppDbContext db) {
-        List<int> ids = await ParseFormIds(httpRequest);
+    public async Task<IResult> PostProgressionBulkV2(AppDbContext db) {
+        List<int> ids = await ParseFormIds(HttpContext.Request);
             
         if (!ids.Any())
             return Results.Json(new List<PlayerProgressionBulkResponse>());
@@ -98,8 +98,8 @@ public class APIController : ControllerBase
     }
 
     [HttpPost("v1/progression/bulk")]
-    public async Task<IResult> PostProgressionBulkV1(HttpRequest httpRequest, AppDbContext db) {
-        List<int> ids = await ParseFormIds(httpRequest);
+    public async Task<IResult> PostProgressionBulkV1(AppDbContext db) {
+        List<int> ids = await ParseFormIds(HttpContext.Request);
 
         if (!ids.Any())
             return Results.Json(new List<PlayerProgressionBulkResponse>());
@@ -116,11 +116,11 @@ public class APIController : ControllerBase
 
     [HttpPost("avatar/v2/set")]
     [Authorize]
-    public async Task<IResult> SetAvatarV2(HttpRequest request, AppDbContext db, JwtTokenService jwtService)
+    public async Task<IResult> SetAvatarV2(AppDbContext db, JwtTokenService jwtService)
     {
         int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
-        request.EnableBuffering();
-        var avatarUpdate = await System.Text.Json.JsonSerializer.DeserializeAsync<PlayerAvatar>(request.Body);
+        HttpContext.Request.EnableBuffering();
+        var avatarUpdate = await System.Text.Json.JsonSerializer.DeserializeAsync<PlayerAvatar>(HttpContext.Request.Body);
             
         if (avatarUpdate == null)
             return Results.BadRequest();
@@ -158,7 +158,7 @@ public class APIController : ControllerBase
 
     [HttpGet("settings/v2")]
     [Authorize]
-    public async Task<IResult> GetSettings(HttpRequest request, AppDbContext db, JwtTokenService jwtService)
+    public async Task<IResult> GetSettings(AppDbContext db, JwtTokenService jwtService)
     {
         int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
             
@@ -212,7 +212,7 @@ public class APIController : ControllerBase
     
     [HttpGet("accounts/v1/getBio")]
     [Authorize]
-    public async Task<IResult> GetAccountBio(HttpRequest request, AppDbContext db)
+    public async Task<IResult> GetAccountBio(AppDbContext db)
     {
         int accountId = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
 
