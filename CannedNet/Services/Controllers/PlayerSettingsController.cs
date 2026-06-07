@@ -8,7 +8,7 @@ namespace CannedNet.Services.Controllers;
 [ApiController, Route("playersettings")]
 public class PlayerSettingsController : ControllerBase
 {
-    [HttpGet("/playersettings")]
+    [HttpGet("playersettings")]
     [Authorize]
     public async Task<IResult> GetPlayerSettings(AppDbContext db)
     {
@@ -63,7 +63,7 @@ public class PlayerSettingsController : ControllerBase
         return Results.Json(settings);
     }
 
-    [HttpPut("/playersettings")]
+    [HttpPut("playersettings")]
     [Authorize]
     public async Task<IResult> PutPlayerSettings(AppDbContext db)
     {

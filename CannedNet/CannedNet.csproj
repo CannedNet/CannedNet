@@ -22,4 +22,20 @@
         </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Accounts.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.API.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Auth.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.CDN.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Chat.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Clubs.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Commerce.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Econ.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Image.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Match.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.Notify.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.NS.json" />
+      <_ContentIncludedByDefault Remove="AppConfigs\appsettings.PlayerSettings.json" />
+    </ItemGroup>
+
 </Project>

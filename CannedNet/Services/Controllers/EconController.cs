@@ -9,21 +9,21 @@ namespace CannedNet.Services.Controllers;
 [ApiController, Route("econ")]
 public class EconController : ControllerBase
 {
-    [HttpGet("api/avatar/v1/defaultunlocked")]
+    [HttpGet("/api/avatar/v1/defaultunlocked")]
     public async Task<IResult> DefaultUnlocked()
     {
         var json = System.IO.File.ReadAllText("JSON/defaultAvatarItems.json");
         return Results.Content(json, "application/json");
     }
 
-    [HttpGet("api/avatar/v1/defaultbaseavataritems")]
+    [HttpGet("/api/avatar/v1/defaultbaseavataritems")]
     public async Task<IResult> DefaultBaseAvatarItems()
     {
         var json = System.IO.File.ReadAllText("JSON/defaultAvatarItems.json");
         return Results.Content(json, "application/json");
     }
 
-    [HttpGet("api/avatar/v4/items")]
+    [HttpGet("/api/avatar/v4/items")]
     [Authorize]
     public async Task<IResult> GetAvatarItemsV4(AppDbContext db)
     {
