@@ -1,11 +1,12 @@
 # CannedNet
 A RecNet API Reimplementation written in C#
 
-Currently supported version: 2021-01-29
+Currently supported version: 2021-01-29 (There is a 2023 branch currently being worked on, and is refactoring a lot of things internally. If you are wanting to contribute to 2023, please use the `2023-Refactor` branch.)
 
-Lots of data and stuff like the photon servers listed here are Radium's servers, these can be changed safely, I'm just currently using it for testing.
-
-~~Doesn't really matter as with this current state you can't login fully~~ WE GOT LOGGED IN!!!!
+Contact: 
+`windows11pro` on Discord (Lapis)
+`@lapisosc` on Twitter
+`lapiscreates` on Libera IRC
 
 TODO:
 
