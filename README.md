@@ -4,8 +4,11 @@ A RecNet API Reimplementation written in C#
 Currently supported version: 2021-01-29 (There is a 2023 branch currently being worked on, and is refactoring a lot of things internally. If you are wanting to contribute to 2023, please use the `2023-Refactor` branch.)
 
 Contact: 
+
 `windows11pro` on Discord (Lapis)
+
 `@lapisosc` on Twitter
+
 `lapiscreates` on Libera IRC
 
 TODO:
