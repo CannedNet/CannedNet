@@ -238,7 +238,29 @@ public class EconController : ControllerBase
     [HttpGet("api/avatar/v1/defaultbaseavataritems")]
     public async Task<IResult> DefaultBaseAvatarItems()
     {
-        var json = System.IO.File.ReadAllText("JSON/defaultAvatarItems.json");
-        return Results.Content(json, "application/json");
+        return Results.Ok(new List<object>());
+    }
+
+    [Authorize]
+    [HttpGet("econ/customAvatarItems/v1/owned")]
+    public async Task<IResult> GetMyOwnedCustomAvatarItems(int skip, int take)
+    {
+        return Results.Ok(new
+        {
+            Results = Array.Empty<object>(),
+            TotalResults = 0
+        });
+    }
+
+    [HttpGet("api/roomcurrencies/v1/currencies")]
+    public async Task<IResult> GetRoomCurrencies()
+    {
+        return Results.Ok(new List<object>());
+    }
+
+    [HttpGet("api/roomconsumables/v1/roomConsumable/room/{roomId}")]
+    public async Task<IResult> GetRoomConsumablesForRoom(long roomId)
+    {
+        return Results.Ok(new List<object>());
     }
 }

@@ -12,7 +12,8 @@ public class ImageController : ControllerBase
 {
     private static readonly byte[] PlaceholderJpeg;
 
-    static ImageController() {
+    static ImageController()
+    {
         Signatures.Init();
 
         using Image<Rgba32> image = new(64, 64);
@@ -23,7 +24,9 @@ public class ImageController : ControllerBase
     }
 
     [HttpGet("{imageName}")]
-    public async Task<IResult> GetImage(HttpContext context, string imageName) {
+    public async Task<IResult> GetImage(string imageName)
+    {
+        HttpContext context = HttpContext;
         string imagesDir = Path.Combine("Images");
         Directory.CreateDirectory(imagesDir);
         string filePath = Path.Combine(imagesDir, imageName);
@@ -31,10 +34,12 @@ public class ImageController : ControllerBase
         byte[] imageBytes;
         string contentType;
 
-        if (System.IO.File.Exists(filePath)) {
+        if (System.IO.File.Exists(filePath))
+        {
             imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
             string ext = Path.GetExtension(imageName).ToLowerInvariant();
-            contentType = ext switch {
+            contentType = ext switch
+            {
                 ".jpg" or ".jpeg" => "image/jpeg",
                 ".gif" => "image/gif",
                 ".webp" => "image/webp",
@@ -42,7 +47,8 @@ public class ImageController : ControllerBase
                 _ => "image/png"
             };
         }
-        else {
+        else
+        {
             imageBytes = PlaceholderJpeg;
             contentType = "image/jpeg";
         }
@@ -51,7 +57,8 @@ public class ImageController : ControllerBase
         string? widthStr = context.Request.Query["width"].FirstOrDefault();
         string? heightStr = context.Request.Query["height"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(widthStr) && string.IsNullOrEmpty(heightStr) && string.IsNullOrEmpty(cropSquare)) {
+        if (string.IsNullOrEmpty(widthStr) && string.IsNullOrEmpty(heightStr) && string.IsNullOrEmpty(cropSquare))
+        {
             SignImageResponse(context, ref imageBytes);
             return Results.File(imageBytes, contentType);
         }
@@ -61,7 +68,8 @@ public class ImageController : ControllerBase
         int resizeWidth = 0;
         int resizeHeight = 0;
 
-        if (!string.IsNullOrEmpty(cropSquare) && cropSquare != "0" && cropSquare != "false") {
+        if (!string.IsNullOrEmpty(cropSquare) && cropSquare != "0" && cropSquare != "false")
+        {
             int size = Math.Min(image.Width, image.Height);
             int x = (image.Width - size) / 2;
             int y = (image.Height - size) / 2;
@@ -74,7 +82,8 @@ public class ImageController : ControllerBase
         if (int.TryParse(heightStr, out int h))
             resizeHeight = h;
 
-        if (resizeWidth > 0 || resizeHeight > 0) {
+        if (resizeWidth > 0 || resizeHeight > 0)
+        {
             image.Mutate(x => x.Resize(resizeWidth, resizeHeight));
         }
 
@@ -85,11 +94,13 @@ public class ImageController : ControllerBase
         return Results.File(imageBytes, "image/jpeg");
     }
 
-    private static void SignImageResponse(HttpContext context, ref byte[] imageBytes) {
+    private static void SignImageResponse(HttpContext context, ref byte[] imageBytes)
+    {
         if (context.Request.Query["sig"] != "p1") return;
 
         string? signature = Signatures.Sign(imageBytes);
-        if (signature != null) {
+        if (signature != null)
+        {
             context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature}";
         }
     }
