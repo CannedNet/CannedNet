@@ -7,3 +7,4 @@ riderModule.iml
 /CannedNet.API/Migrations
 CannedNet.sln.DotSettings.user
 CannedNet/Data/PrivateKey.pem
+/CannedNet/.zed

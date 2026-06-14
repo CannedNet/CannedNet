@@ -28,14 +28,14 @@ public class MatchmakingController : ControllerBase
         var id = HttpContext.Request.Query["id"].FirstOrDefault();
         if (string.IsNullOrEmpty(id) || !int.TryParse(id, out var accountId))
         {
-                var json = System.IO.File.ReadAllText("JSON/getplayer.json");
-                return Results.Content(json, "application/json");
-            }
+            var json = System.IO.File.ReadAllText("JSON/getplayer.json");
+            return Results.Content(json, "application/json");
+        }
 
-            var account = await db.Accounts.FindAsync(accountId);
-            if (account == null)
-            {
-                var json = System.IO.File.ReadAllText("JSON/getplayer.json");
+        var account = await db.Accounts.FindAsync(accountId);
+        if (account == null)
+        {
+            var json = System.IO.File.ReadAllText("JSON/getplayer.json");
             return Results.Content(json, "application/json");
         }
 

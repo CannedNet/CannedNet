@@ -7,12 +7,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CannedNet.Services.Controllers;
 
-[ApiController, Route("api")]
+[ApiController, Route("api/api")]
 public class APIController : ControllerBase
 {
     [HttpGet("config/v1/amplitude")]
-    public async Task<IResult> Amplitude() {
-        return Results.Ok(new {
+    public async Task<IResult> Amplitude()
+    {
+        return Results.Ok(new
+        {
             AmplitudeKey = "a",
             StatSigKey = "a",
             RudderStackKey = "a",
@@ -21,8 +23,10 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("config/v1/azurespeech")]
-    public async Task<IResult> AzureSpeech() {
-        return Results.Ok(new {
+    public async Task<IResult> AzureSpeech()
+    {
+        return Results.Ok(new
+        {
             Key = "dce8de5b297747d9b5bddcc7f19e8c5b",
             Region = "eastus",
             Enabled = false
@@ -34,9 +38,10 @@ public class APIController : ControllerBase
 
     [HttpGet("gameconfigs/v1/all")]
     public async Task<IResult> GameConfigsV1All() => Results.Content(await System.IO.File.ReadAllTextAsync("JSON/gameconfigs.json"), "application/json");
-    
+
     [HttpGet("versioncheck/v4")]
-    public async Task<IResult> VersionCheckV4() => Results.Ok(new {
+    public async Task<IResult> VersionCheckV4() => Results.Ok(new
+    {
         VersionStatus = 0,
         UpdateNotificationStage = 0,
         IsVersionIslanded = false,
@@ -48,15 +53,16 @@ public class APIController : ControllerBase
 
     [HttpGet("messages/v2/get")]
     public async Task<IResult> GetMessagesV2() => Results.Content("[]", "application/json");
-    
+
     [HttpGet("playerReputation/v1/{id}")]
     public async Task<IResult> GetPlayersV1Reputation(string id) => Results.Content($"{{\"AccountId\":{id},\"Noteriety\":0,\"CheerGeneral\":0,\"CheerHelpful\":0,\"CheerCreative\":0,\"CheerGreatHost\":0,\"CheerSportsman\":0,\"CheerCredit\":20,\"SelectedCheer\":null}}", "application/json");
-    
+
     [HttpGet("players/v1/progression/{id}")]
     public async Task<IResult> GetPlayersV1Progression(string id) => Results.Content($"{{\"PlayerId\":{id},\"Level\":1,\"XP\":0}}", "application/json");
 
     [HttpPost("playerReputation/v2/bulk")]
-    public async Task<IResult> PostPlayerReputationV2Bulk(AppDbContext db) {
+    public async Task<IResult> PostPlayerReputationV2Bulk(AppDbContext db)
+    {
         /*var ids = await ParseFormIds(httpRequest);
 
             if (!ids.Any())
@@ -83,22 +89,24 @@ public class APIController : ControllerBase
     }
 
     [HttpPost("players/v2/progression/bulk")]
-    public async Task<IResult> PostProgressionBulkV2(AppDbContext db) {
+    public async Task<IResult> PostProgressionBulkV2(AppDbContext db)
+    {
         List<int> ids = await ParseFormIds(HttpContext.Request);
-            
+
         if (!ids.Any())
             return Results.Json(new List<PlayerProgressionBulkResponse>());
-            
+
         List<PlayerProgressionBulkResponse> progressions = await db.PlayerProgressions
             .Where(p => ids.Contains(p.PlayerId))
             .Select(p => new PlayerProgressionBulkResponse { PlayerId = p.PlayerId, Level = p.Level, Xp = p.Xp })
             .ToListAsync();
-            
+
         return Results.Json(progressions);
     }
 
     [HttpPost("v1/progression/bulk")]
-    public async Task<IResult> PostProgressionBulkV1(AppDbContext db) {
+    public async Task<IResult> PostProgressionBulkV1(AppDbContext db)
+    {
         List<int> ids = await ParseFormIds(HttpContext.Request);
 
         if (!ids.Any())
@@ -121,28 +129,28 @@ public class APIController : ControllerBase
         int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
         HttpContext.Request.EnableBuffering();
         var avatarUpdate = await System.Text.Json.JsonSerializer.DeserializeAsync<PlayerAvatar>(HttpContext.Request.Body);
-            
+
         if (avatarUpdate == null)
             return Results.BadRequest();
-            
+
         var avatar = await db.PlayerAvatars
             .FirstOrDefaultAsync(a => a.OwnerAccountId == id);
-            
+
         if (avatar == null)
         {
             avatar = new PlayerAvatar { OwnerAccountId = id };
             db.PlayerAvatars.Add(avatar);
         }
-            
+
         avatar.OutfitSelections = avatarUpdate.OutfitSelections;
         avatar.FaceFeatures = avatarUpdate.FaceFeatures;
         avatar.SkinColor = avatarUpdate.SkinColor;
         avatar.HairColor = avatarUpdate.HairColor;
-            
+
         await db.SaveChangesAsync();
         return Results.Ok(avatar);
     }
-    
+
     [HttpGet("PlayerReporting/v1/moderationBlockDetails")]
     public IResult GetModerationBlockDetails()
     {
@@ -160,13 +168,16 @@ public class APIController : ControllerBase
     [Authorize]
     public async Task<IResult> GetSettings(AppDbContext db, JwtTokenService jwtService)
     {
+        if (User == null || User.Identity == null)
+            return Results.NotFound();
+
         int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
-            
+
         var settings = await db.PlayerSettings
             .Where(s => s.PlayerId == id)
             .ToListAsync();
-            
-        if (!settings.Any())
+
+        if (settings.Count == 0)
         {
             var defaults = new List<PlayerSetting>
             {
@@ -206,10 +217,10 @@ public class APIController : ControllerBase
             await db.SaveChangesAsync();
             settings = defaults;
         }
-    
+
         return Results.Json(settings);
     }
-    
+
     [HttpGet("accounts/v1/getBio")]
     [Authorize]
     public async Task<IResult> GetAccountBio(AppDbContext db)
@@ -219,46 +230,53 @@ public class APIController : ControllerBase
         var bio = await db.PlayerBios
             .Where(s => accountId == accountId)
             .ToListAsync();
-            
+
         return Results.Json(bio);
     }
-    
+
 
     [HttpGet("communityboard/v2/current")]
-    public async Task<IResult> CommunityBoardCurrent() {
+    public async Task<IResult> CommunityBoardCurrent()
+    {
         var json = System.IO.File.ReadAllText("JSON/communityboard.json");
         return Results.Content(json, "application/json");
     }
 
     [HttpGet("playerevents/v1/all")]
-    public async Task<IResult> PlayerEventsAll() {
+    public async Task<IResult> PlayerEventsAll()
+    {
         return Results.Content("{\"Created\":[],\"Responses\":[]}", "application/json");
     }
 
     [HttpGet("storefronts/v1/p2p/betaEnabled")]
-    public IResult StorefrontsP2PBetaEnabled() {
+    public IResult StorefrontsP2PBetaEnabled()
+    {
         return Results.Content("false", "application/json");
     }
 
     [HttpGet("announcement/v1/get")]
-    public async Task<IResult> AnnouncementGet() {
+    public async Task<IResult> AnnouncementGet()
+    {
         var json = System.IO.File.ReadAllText("JSON/announcements.json");
         return Results.Content(json, "application/json");
     }
 
     [HttpGet("quickPlay/v1/getandclear")]
-    public async Task<IResult> QuickPlayGetAndClear() {
+    public async Task<IResult> QuickPlayGetAndClear()
+    {
         return Results.Content("{\"RoomName\":null,\"ActionCode\":null,\"TargetPlayerId\":null}", "application/json");
     }
 
     [HttpGet("roomkeys/v1/room")]
-    public async Task<IResult> RoomKeysRoom() {
+    public async Task<IResult> RoomKeysRoom()
+    {
         var roomid = Request.Query["roomId"];
         return Results.Content("[]", "application/json");
     }
 
     [HttpGet("/roomserver/rooms/bulk")]
-    public async Task<IResult> RoomserverRoomsBulk(AppDbContext db) {
+    public async Task<IResult> RoomserverRoomsBulk(AppDbContext db)
+    {
         var idParam = Request.Query["id"].FirstOrDefault();
         var nameParam = Request.Query["name"].FirstOrDefault();
 
@@ -360,7 +378,8 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("/roomserver/rooms/hot")]
-    public async Task<IResult> RoomserverRoomsHot(AppDbContext db) {
+    public async Task<IResult> RoomserverRoomsHot(AppDbContext db)
+    {
         var tagFilter = Request.Query["tag"].FirstOrDefault()?.ToLower();
         var allRooms = await db.Rooms.ToListAsync();
 
@@ -427,7 +446,8 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("/roomserver/roomsandplaylists/hot")]
-    public async Task<IResult> RoomserverRoomsAndPlaylistsHot(AppDbContext db) {
+    public async Task<IResult> RoomserverRoomsAndPlaylistsHot(AppDbContext db)
+    {
         var allRooms = await db.Rooms.Where(r => !r.IsDorm).OrderByDescending(r => r.Id).ToListAsync();
         var results = new List<object>();
 
@@ -481,7 +501,8 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("/roomserver/rooms/{id}")]
-    public async Task<IResult> RoomserverRoomsId(string id, AppDbContext db) {
+    public async Task<IResult> RoomserverRoomsId(string id, AppDbContext db)
+    {
         if (!int.TryParse(id, out var roomId))
             return Results.NotFound();
 
@@ -534,23 +555,27 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("images/v2/named")]
-    public async Task<IResult> NamedImages() {
+    public async Task<IResult> NamedImages()
+    {
         var json = System.IO.File.ReadAllText("JSON/namedimages.json");
         return Results.Content(json, "application/json");
     }
 
     [HttpPost("objectives/v1/updateobjective")]
-    public async Task<IResult> UpdateObjective() {
+    public async Task<IResult> UpdateObjective()
+    {
         return Results.Ok();
     }
 
     [HttpPost("PlayerReporting/v1/hile")]
-    public async Task<IResult> PlayerReportingHile() {
+    public async Task<IResult> PlayerReportingHile()
+    {
         return Results.Ok();
     }
 
     [HttpGet("storefronts/v3/giftdropstore/300")]
-    public async Task<IResult> GiftDropStore300(StorefrontFillService storefrontService) {
+    public async Task<IResult> GiftDropStore300(StorefrontFillService storefrontService)
+    {
         var storefronts = await storefrontService.GetStorefrontsAsync();
         var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 300 && s.Name == "rc_cafe_storefront");
         if (storefront == null)
@@ -568,11 +593,26 @@ public class APIController : ControllerBase
             item.NewUntil,
             GiftDrops = item.GiftDrops.Select(gd => new
             {
-                gd.Id, gd.StorefrontItemId, gd.GiftDropId, gd.FriendlyName, gd.Tooltip,
-                gd.ConsumableItemDesc, gd.AvatarItemDesc, gd.AvatarItemType,
-                gd.EquipmentPrefabName, gd.EquipmentModificationGuid, gd.IsQuery,
-                gd.Unique, gd.SubscribersOnly, gd.Level, gd.Rarity, gd.CurrencyType,
-                gd.Currency, gd.Context, gd.ItemSetId, gd.ItemSetFriendlyName
+                gd.Id,
+                gd.StorefrontItemId,
+                gd.GiftDropId,
+                gd.FriendlyName,
+                gd.Tooltip,
+                gd.ConsumableItemDesc,
+                gd.AvatarItemDesc,
+                gd.AvatarItemType,
+                gd.EquipmentPrefabName,
+                gd.EquipmentModificationGuid,
+                gd.IsQuery,
+                gd.Unique,
+                gd.SubscribersOnly,
+                gd.Level,
+                gd.Rarity,
+                gd.CurrencyType,
+                gd.Currency,
+                gd.Context,
+                gd.ItemSetId,
+                gd.ItemSetFriendlyName
             }).ToList(),
             Prices = item.Prices.Select(p => new { p.Id, p.StorefrontItemId, p.CurrencyType, p.Price }).ToList()
         }).ToList();
@@ -580,7 +620,8 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("storefronts/v3/giftdropstore/2")]
-    public async Task<IResult> GiftDropStore2(StorefrontFillService storefrontService) {
+    public async Task<IResult> GiftDropStore2(StorefrontFillService storefrontService)
+    {
         var storefronts = await storefrontService.GetStorefrontsAsync();
         var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "rec_center_store");
         if (storefront == null)
@@ -598,11 +639,26 @@ public class APIController : ControllerBase
             item.NewUntil,
             GiftDrops = item.GiftDrops.Select(gd => new
             {
-                gd.Id, gd.StorefrontItemId, gd.GiftDropId, gd.FriendlyName, gd.Tooltip,
-                gd.ConsumableItemDesc, gd.AvatarItemDesc, gd.AvatarItemType,
-                gd.EquipmentPrefabName, gd.EquipmentModificationGuid, gd.IsQuery,
-                gd.Unique, gd.SubscribersOnly, gd.Level, gd.Rarity, gd.CurrencyType,
-                gd.Currency, gd.Context, gd.ItemSetId, gd.ItemSetFriendlyName
+                gd.Id,
+                gd.StorefrontItemId,
+                gd.GiftDropId,
+                gd.FriendlyName,
+                gd.Tooltip,
+                gd.ConsumableItemDesc,
+                gd.AvatarItemDesc,
+                gd.AvatarItemType,
+                gd.EquipmentPrefabName,
+                gd.EquipmentModificationGuid,
+                gd.IsQuery,
+                gd.Unique,
+                gd.SubscribersOnly,
+                gd.Level,
+                gd.Rarity,
+                gd.CurrencyType,
+                gd.Currency,
+                gd.Context,
+                gd.ItemSetId,
+                gd.ItemSetFriendlyName
             }).ToList(),
             Prices = item.Prices.Select(p => new { p.Id, p.StorefrontItemId, p.CurrencyType, p.Price }).ToList()
         }).ToList();
@@ -611,7 +667,8 @@ public class APIController : ControllerBase
 
     [HttpPost("storefronts/v2/buyItem")]
     [Authorize]
-    public async Task<IResult> BuyItem(BuyItemRequest buyRequest, AppDbContext db, NotificationService notificationService) {
+    public async Task<IResult> BuyItem(BuyItemRequest buyRequest, AppDbContext db, NotificationService notificationService)
+    {
         try
         {
             int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
@@ -679,21 +736,34 @@ public class APIController : ControllerBase
 
             var giftData = storedGifts.Select(rg => new GiftData
             {
-                Id = rg.Id, FromPlayerId = null,
-                ConsumableItemDesc = rg.ConsumableItemDesc, AvatarItemDesc = rg.AvatarItemDesc,
-                FriendlyName = rg.FriendlyName, AvatarItemType = rg.AvatarItemType,
-                EquipmentPrefabName = rg.EquipmentPrefabName, EquipmentModificationGuid = rg.EquipmentModificationGuid,
-                CurrencyType = rg.CurrencyType, Currency = rg.Currency, Xp = rg.Xp, Level = rg.Level,
-                Platform = rg.Platform, PlatformsToSpawnOn = rg.PlatformsToSpawnOn, BalanceType = rg.BalanceType,
-                GiftContext = rg.GiftContext, GiftRarity = rg.GiftRarity, Message = rg.Message
+                Id = rg.Id,
+                FromPlayerId = null,
+                ConsumableItemDesc = rg.ConsumableItemDesc,
+                AvatarItemDesc = rg.AvatarItemDesc,
+                FriendlyName = rg.FriendlyName,
+                AvatarItemType = rg.AvatarItemType,
+                EquipmentPrefabName = rg.EquipmentPrefabName,
+                EquipmentModificationGuid = rg.EquipmentModificationGuid,
+                CurrencyType = rg.CurrencyType,
+                Currency = rg.Currency,
+                Xp = rg.Xp,
+                Level = rg.Level,
+                Platform = rg.Platform,
+                PlatformsToSpawnOn = rg.PlatformsToSpawnOn,
+                BalanceType = rg.BalanceType,
+                GiftContext = rg.GiftContext,
+                GiftRarity = rg.GiftRarity,
+                Message = rg.Message
             }).ToList();
 
             var balanceUpdate = new BalanceUpdate { UpdateResponse = 0, Data = giftData };
             var response = new BuyItemResponse
             {
                 BalanceUpdates = new List<BalanceUpdate> { balanceUpdate },
-                Balance = tokenBalance.Balance, CurrencyType = buyRequest.CurrencyType,
-                BalanceType = -1, Platform = -1
+                Balance = tokenBalance.Balance,
+                CurrencyType = buyRequest.CurrencyType,
+                BalanceType = -1,
+                Platform = -1
             };
 
             try
@@ -722,7 +792,8 @@ public class APIController : ControllerBase
 
     [HttpPost("avatar/v2/gifts/generate")]
     [Authorize]
-    public async Task<IResult> AvatarGiftsGenerate(AppDbContext db) {
+    public async Task<IResult> AvatarGiftsGenerate(AppDbContext db)
+    {
         try
         {
             int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
@@ -808,14 +879,26 @@ public class APIController : ControllerBase
 
             var receivedGift = new ReceivedGift
             {
-                ReceiverAccountId = id, FromPlayerId = 1, Message = message,
-                ConsumableItemDesc = consumableItemDesc, AvatarItemDesc = avatarItemDesc,
-                FriendlyName = friendlyName, AvatarItemType = avatarItemType,
-                EquipmentPrefabName = "", EquipmentModificationGuid = "",
-                CurrencyType = currencyType, Currency = currency, Xp = xp, Level = 0,
-                Platform = -1, PlatformsToSpawnOn = -1, BalanceType = 0,
-                GiftContext = giftContext, GiftRarity = giftRarity,
-                ReceivedAt = DateTime.UtcNow, IsConsumed = false
+                ReceiverAccountId = id,
+                FromPlayerId = 1,
+                Message = message,
+                ConsumableItemDesc = consumableItemDesc,
+                AvatarItemDesc = avatarItemDesc,
+                FriendlyName = friendlyName,
+                AvatarItemType = avatarItemType,
+                EquipmentPrefabName = "",
+                EquipmentModificationGuid = "",
+                CurrencyType = currencyType,
+                Currency = currency,
+                Xp = xp,
+                Level = 0,
+                Platform = -1,
+                PlatformsToSpawnOn = -1,
+                BalanceType = 0,
+                GiftContext = giftContext,
+                GiftRarity = giftRarity,
+                ReceivedAt = DateTime.UtcNow,
+                IsConsumed = false
             };
 
             db.ReceivedGifts.Add(receivedGift);
@@ -823,13 +906,24 @@ public class APIController : ControllerBase
 
             return Results.Ok(new
             {
-                Id = receivedGift.Id, FromPlayerId = 1,
-                ConsumableItemDesc = consumableItemDesc, AvatarItemDesc = avatarItemDesc,
-                FriendlyName = friendlyName, AvatarItemType = avatarItemType,
-                EquipmentPrefabName = "", EquipmentModificationGuid = "",
-                CurrencyType = currencyType, Currency = currency, Xp = xp, Level = 0,
-                Platform = -1, PlatformsToSpawnOn = -1, BalanceType = 0,
-                GiftContext = giftContext, GiftRarity = giftRarity, Message = message
+                Id = receivedGift.Id,
+                FromPlayerId = 1,
+                ConsumableItemDesc = consumableItemDesc,
+                AvatarItemDesc = avatarItemDesc,
+                FriendlyName = friendlyName,
+                AvatarItemType = avatarItemType,
+                EquipmentPrefabName = "",
+                EquipmentModificationGuid = "",
+                CurrencyType = currencyType,
+                Currency = currency,
+                Xp = xp,
+                Level = 0,
+                Platform = -1,
+                PlatformsToSpawnOn = -1,
+                BalanceType = 0,
+                GiftContext = giftContext,
+                GiftRarity = giftRarity,
+                Message = message
             });
         }
         catch (Exception ex)
@@ -840,7 +934,8 @@ public class APIController : ControllerBase
 
     [HttpPost("avatar/v2/gifts/consume/")]
     [Authorize]
-    public async Task<IResult> AvatarGiftsConsume(AppDbContext db) {
+    public async Task<IResult> AvatarGiftsConsume(AppDbContext db)
+    {
         try
         {
             int id = User.Identity.Name != null && int.TryParse(User.Identity.Name, out var parsedId) ? parsedId : -1;
@@ -889,8 +984,11 @@ public class APIController : ControllerBase
                         Ids = new List<int> { giftId },
                         CreatedAts = new List<DateTime> { DateTime.UtcNow },
                         ConsumableItemDesc = receivedGift.ConsumableItemDesc,
-                        Count = 1, InitialCount = 1, IsActive = false,
-                        ActiveDurationMinutes = 0, IsTransferable = false
+                        Count = 1,
+                        InitialCount = 1,
+                        IsActive = false,
+                        ActiveDurationMinutes = 0,
+                        IsTransferable = false
                     });
                 }
                 else
@@ -921,8 +1019,10 @@ public class APIController : ControllerBase
                 {
                     db.TokenBalances.Add(new TokenBalance
                     {
-                        Id = id, CurrencyType = receivedGift.CurrencyType,
-                        BalanceType = -1, Balance = receivedGift.Currency
+                        Id = id,
+                        CurrencyType = receivedGift.CurrencyType,
+                        BalanceType = -1,
+                        Balance = receivedGift.Currency
                     });
                 }
                 else
@@ -946,18 +1046,21 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("rooms/v1/filters")]
-    public async Task<IResult> RoomsFilters() {
+    public async Task<IResult> RoomsFilters()
+    {
         var json = System.IO.File.ReadAllText("JSON/roomfilters.json");
         return Results.Content(json, "application/json");
     }
 
     [HttpGet("/roomserver/rooms/{id}/interactionby/me")]
-    public async Task<IResult> RoomInteractionByMe(string id) {
+    public async Task<IResult> RoomInteractionByMe(string id)
+    {
         return Results.Content("{\"Cheered\":false,\"Favorited\":false}", "application/json");
     }
 
     [HttpPost("images/v4/uploadsaved")]
-    public async Task<IResult> ImageUploadSaved() {
+    public async Task<IResult> ImageUploadSaved()
+    {
         try
         {
             var form = await HttpContext.Request.ReadFormAsync();
@@ -986,7 +1089,8 @@ public class APIController : ControllerBase
     }
 
     [HttpGet("config/v1/backtrace")]
-    public IResult BacktraceConfig() {
+    public IResult BacktraceConfig()
+    {
         return Results.Ok(new
         {
             ReportBudget = 125,
@@ -1001,6 +1105,205 @@ public class APIController : ControllerBase
         });
     }
 
+    [HttpPost("settings/v2/set")]
+    [Authorize]
+    public async Task<IResult> SetSettings(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        HttpContext.Request.EnableBuffering();
+        HttpContext.Request.Body.Position = 0;
+        using var reader = new StreamReader(HttpContext.Request.Body);
+        var body = await reader.ReadToEndAsync();
+
+        Console.WriteLine($"Settings request body: {body}");
+
+        var settings = new List<PlayerSetting>();
+
+        if (body.TrimStart().StartsWith("["))
+        {
+            settings = System.Text.Json.JsonSerializer.Deserialize<List<PlayerSetting>>(body) ?? [];
+        }
+        else
+        {
+            var single = System.Text.Json.JsonSerializer.Deserialize<PlayerSetting>(body);
+            if (single != null) settings.Add(single);
+        }
+
+        settings = settings.Where(s => !string.IsNullOrEmpty(s.Key)).ToList();
+
+        if (settings.Count == 0)
+            return Results.Ok();
+
+        db.PlayerSettings.RemoveRange(db.PlayerSettings.Where(s => s.PlayerId == id));
+
+        foreach (var setting in settings)
+        {
+            setting.PlayerId = id;
+            setting.Key = setting.Key ?? "";
+            setting.Value = setting.Value ?? "";
+            db.PlayerSettings.Add(setting);
+        }
+
+        await db.SaveChangesAsync();
+        return Results.Ok();
+    }
+
+
+    [HttpGet("equipment/v2/getUnlocked")]
+    public async Task<IResult> GetEquipmentUnlocked()
+    {
+        return Results.Content("[]", "application/json");
+    }
+
+    [HttpGet("consumables/v2/getUnlocked")]
+    [Authorize]
+    public async Task<IResult> GetConsumablesUnlocked(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        var consumables = await db.ConsumableItems
+            .Where(c => c.OwnerAccountId == id)
+            .ToListAsync();
+
+        return Results.Json(consumables);
+    }
+
+    [HttpGet("storefronts/v4/balance/2")]
+    [Authorize]
+    public async Task<IResult> GetStorefrontBalance(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        var balance = await db.TokenBalances
+            .Where(s => s.Id == id)
+            .ToListAsync();
+
+        return Results.Json(balance);
+    }
+
+    [HttpGet("storefronts/v3/giftdropstore/3")]
+    public async Task<IResult> GetGiftDropStore3(AppDbContext db, StorefrontFillService storefrontService)
+    {
+        var storefronts = await storefrontService.GetStorefrontsAsync();
+        var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "watch_store");
+        if (storefront == null)
+        {
+            var json = System.IO.File.ReadAllText("JSON/storefront3.json");
+            return Results.Content(json, "application/json");
+        }
+        var storeItems = storefront.Items.Select(item => new
+        {
+            item.Id,
+            item.StorefrontId,
+            item.PurchasableItemId,
+            item.Type,
+            item.IsFeatured,
+            item.NewUntil,
+            GiftDrops = item.GiftDrops.Select(gd => new
+            {
+                gd.Id,
+                gd.StorefrontItemId,
+                gd.GiftDropId,
+                gd.FriendlyName,
+                gd.Tooltip,
+                gd.ConsumableItemDesc,
+                gd.AvatarItemDesc,
+                gd.AvatarItemType,
+                gd.EquipmentPrefabName,
+                gd.EquipmentModificationGuid,
+                gd.IsQuery,
+                gd.Unique,
+                gd.SubscribersOnly,
+                gd.Level,
+                gd.Rarity,
+                gd.CurrencyType,
+                gd.Currency,
+                gd.Context,
+                gd.ItemSetId,
+                gd.ItemSetFriendlyName
+            }).ToList(),
+            Prices = item.Prices.Select(p => new
+            {
+                p.Id,
+                p.StorefrontItemId,
+                p.CurrencyType,
+                p.Price
+            }).ToList()
+        }).ToList();
+        var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
+        return Results.Ok(response);
+    }
+
+    [HttpGet("challenge/v2/getCurrent")]
+    public async Task<IResult> GetCurrentChallenge()
+    {
+        var json = System.IO.File.ReadAllText("JSON/weeklychallenge.json");
+        return Results.Content(json, "application/json");
+    }
+
+    [HttpGet("avatar/v3/saved")]
+    [Authorize]
+    public async Task<IResult> GetSavedAvatars(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        var items = await db.SavedOutfits
+            .Where(i => i.OwnerAccountId == id)
+            .ToListAsync();
+
+        return Results.Json(items);
+    }
+
+    [HttpGet("avatar/v2/gifts")]
+    [Authorize]
+    public async Task<IResult> GetGifts(AppDbContext db)
+    {
+        try
+        {
+            if (!int.TryParse(User.Identity?.Name, out var id))
+                return Results.Unauthorized();
+
+            var pendingGifts = await db.ReceivedGifts
+                .Where(rg => rg.ReceiverAccountId == id && !rg.IsConsumed)
+                .ToListAsync();
+
+            return Results.Json(pendingGifts);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Error retrieving gifts: {ex.Message}");
+        }
+    }
+
+    [HttpGet("gamerewards/v1/pending")]
+    public async Task<IResult> GetGameRewardsPending()
+    {
+        return Results.Content("[]", "application/json");
+    }
+
+    [HttpGet("roomkeys/v1/mine")]
+    public async Task<IResult> GetRoomKeysMine()
+    {
+        return Results.Content("[]", "application/json");
+    }
+
+    [HttpPost("CampusCard/v1/UpdateAndGetSubscription")]
+    public async Task<IResult> UpdateAndGetSubscription()
+    {
+        return Results.Json(new { subscription = (object?)null, platformAccountSubscribedPlayerId = (object?)null });
+    }
+
+    [Authorize]
+    [HttpGet("customAvatarItems/v1/isCreationAllowedForAccount")]
+    public async Task<IResult> IsCustomAvatarItemsCreationAllowedForAccount()
+    {
+        return Results.Json(new { isAllowed = true });
+    }
 
     private static object[]? TryDeserializeTags(string json)
     {
@@ -1009,7 +1312,7 @@ public class APIController : ControllerBase
             var tags = System.Text.Json.JsonSerializer.Deserialize<RoomTag[]>(json);
             if (tags != null)
                 return tags.Cast<object>().ToArray();
-            
+
             return null;
         }
         catch
@@ -1033,13 +1336,13 @@ public class APIController : ControllerBase
     private static async Task<List<int>> ParseFormIds(HttpRequest httpRequest)
     {
         var ids = new List<int>();
-        
+
         if (httpRequest.ContentLength.HasValue && httpRequest.ContentLength > 0)
         {
             httpRequest.EnableBuffering();
             using var reader = new StreamReader(httpRequest.Body, leaveOpen: true);
             var body = await reader.ReadToEndAsync();
-            
+
             if (!string.IsNullOrWhiteSpace(body))
             {
                 foreach (var pair in body.Split('&'))
@@ -1057,11 +1360,11 @@ public class APIController : ControllerBase
             }
             httpRequest.Body.Position = 0;
         }
-        
+
         return ids;
     }
-    
-    
+
+
 
     private static readonly string ImagesDir;
     static APIController()

@@ -6,10 +6,10 @@ using Microsoft.Extensions.Primitives;
 
 namespace CannedNet.Services.Controllers;
 
-[ApiController, Route("account")]
+[ApiController, Route("accounts")]
 public class AccountsController : ControllerBase
 {
-    [HttpGet("me")]
+    [HttpGet("account/me")]
     [Authorize]
     public async Task<IResult> Me(AppDbContext db)
     {
@@ -18,9 +18,10 @@ public class AccountsController : ControllerBase
 
         Account? account = await db.Accounts.FindAsync(id);
         if (account == null)
-            return Results.NotFound();
+            return Results.Unauthorized();
 
-        SelfAccount selfAccount = new SelfAccount {
+        SelfAccount selfAccount = new SelfAccount
+        {
             AccountId = id,
             ProfileImage = account.ProfileImage ?? "hdqeamlcmatc6qzoi2ybgf0ddijjcf.jpg",
             IsJunior = account.IsJunior,
@@ -41,7 +42,7 @@ public class AccountsController : ControllerBase
         return Results.Ok(selfAccount);
     }
 
-    [HttpGet("bulk")]
+    [HttpGet("account/bulk")]
     public async Task<IResult> Bulk(AppDbContext db)
     {
         StringValues ids = HttpContext.Request.Query["id"];
@@ -73,7 +74,7 @@ public class AccountsController : ControllerBase
         return Results.Json(result);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("account/{id}")]
     public async Task<IResult> Id(string id, AppDbContext db)
     {
         if (!int.TryParse(id, out int accountId))
@@ -99,7 +100,7 @@ public class AccountsController : ControllerBase
         return Results.Json(result);
     }
 
-    [HttpPost("create")]
+    [HttpPost("account/create")]
     public async Task<IResult> Create(AppDbContext db)
     {
         var request = HttpContext.Request;

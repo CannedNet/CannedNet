@@ -9,21 +9,60 @@ namespace CannedNet.Services.Controllers;
 [ApiController, Route("econ")]
 public class EconController : ControllerBase
 {
-    [HttpGet("/api/avatar/v1/defaultunlocked")]
+    [HttpGet("customAvatarItems/v1/owned")]
+    public async Task<IResult> CustomAvatarItemsOwned()
+    {
+        return Results.Json(new { items = new List<object>() });
+    }
+
+    [HttpGet("api/avatar/v1/defaultunlocked")]
     public async Task<IResult> DefaultUnlocked()
     {
         var json = System.IO.File.ReadAllText("JSON/defaultAvatarItems.json");
         return Results.Content(json, "application/json");
     }
 
-    [HttpGet("/api/avatar/v1/defaultbaseavataritems")]
-    public async Task<IResult> DefaultBaseAvatarItems()
+    [HttpGet("api/objectives/v1/myprogress")]
+    public async Task<IResult> ObjectivesMyProgress()
     {
-        var json = System.IO.File.ReadAllText("JSON/defaultAvatarItems.json");
+        var json = System.IO.File.ReadAllText("JSON/tempmyprogress.json");
         return Results.Content(json, "application/json");
     }
 
-    [HttpGet("/api/avatar/v4/items")]
+    [HttpGet("api/avatar/v2")]
+    [Authorize]
+    public async Task<IResult> GetAvatarV2(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        var avatar = await db.PlayerAvatars
+            .FirstOrDefaultAsync(a => a.OwnerAccountId == id);
+
+        if (avatar == null)
+        {
+            avatar = new PlayerAvatar
+            {
+                OwnerAccountId = id,
+                OutfitSelections = "",
+                FaceFeatures = "{}",
+                SkinColor = "",
+                HairColor = ""
+            };
+            db.PlayerAvatars.Add(avatar);
+            await db.SaveChangesAsync();
+        }
+
+        return Results.Json(new
+        {
+            OutfitSelections = avatar.OutfitSelections,
+            FaceFeatures = avatar.FaceFeatures,
+            SkinColor = avatar.SkinColor,
+            HairColor = avatar.HairColor
+        });
+    }
+
+    [HttpGet("api/avatar/v4/items")]
     [Authorize]
     public async Task<IResult> GetAvatarItemsV4(AppDbContext db)
     {
@@ -196,241 +235,10 @@ public class EconController : ControllerBase
         return Results.Json(allItems);
     }
 
-    [HttpGet("api/objectives/v1/myprogress")]
-    public async Task<IResult> ObjectivesMyProgress()
+    [HttpGet("api/avatar/v1/defaultbaseavataritems")]
+    public async Task<IResult> DefaultBaseAvatarItems()
     {
-        var json = System.IO.File.ReadAllText("JSON/tempmyprogress.json");
+        var json = System.IO.File.ReadAllText("JSON/defaultAvatarItems.json");
         return Results.Content(json, "application/json");
-    }
-
-    [HttpGet("api/avatar/v2")]
-    [Authorize]
-    public async Task<IResult> GetAvatarV2(AppDbContext db)
-    {
-        if (!int.TryParse(User.Identity?.Name, out var id))
-            return Results.Unauthorized();
-
-        var avatar = await db.PlayerAvatars
-            .FirstOrDefaultAsync(a => a.OwnerAccountId == id);
-
-        if (avatar == null)
-        {
-            avatar = new PlayerAvatar
-            {
-                OwnerAccountId = id,
-                OutfitSelections = "",
-                FaceFeatures = "{}",
-                SkinColor = "",
-                HairColor = ""
-            };
-            db.PlayerAvatars.Add(avatar);
-            await db.SaveChangesAsync();
-        }
-
-        return Results.Json(new
-        {
-            OutfitSelections = avatar.OutfitSelections,
-            FaceFeatures = avatar.FaceFeatures,
-            SkinColor = avatar.SkinColor,
-            HairColor = avatar.HairColor
-        });
-    }
-
-    [HttpPost("api/settings/v2/set")]
-    [Authorize]
-    public async Task<IResult> SetSettings(AppDbContext db)
-    {
-        if (!int.TryParse(User.Identity?.Name, out var id))
-            return Results.Unauthorized();
-
-        HttpContext.Request.EnableBuffering();
-        HttpContext.Request.Body.Position = 0;
-        using var reader = new StreamReader(HttpContext.Request.Body);
-        var body = await reader.ReadToEndAsync();
-
-        Console.WriteLine($"Settings request body: {body}");
-
-        var settings = new List<PlayerSetting>();
-
-        if (body.TrimStart().StartsWith("["))
-        {
-            settings = System.Text.Json.JsonSerializer.Deserialize<List<PlayerSetting>>(body) ?? [];
-        }
-        else
-        {
-            var single = System.Text.Json.JsonSerializer.Deserialize<PlayerSetting>(body);
-            if (single != null) settings.Add(single);
-        }
-
-        settings = settings.Where(s => !string.IsNullOrEmpty(s.Key)).ToList();
-
-        if (!settings.Any())
-            return Results.Ok();
-
-        db.PlayerSettings.RemoveRange(db.PlayerSettings.Where(s => s.PlayerId == id));
-
-        foreach (var setting in settings)
-        {
-            setting.PlayerId = id;
-            setting.Key = setting.Key ?? "";
-            setting.Value = setting.Value ?? "";
-            db.PlayerSettings.Add(setting);
-        }
-
-        await db.SaveChangesAsync();
-        return Results.Ok();
-    }
-
-    [HttpGet("econ/customAvatarItems/v1/owned")]
-    public async Task<IResult> CustomAvatarItemsOwned()
-    {
-        return Results.Json(new { items = new List<object>() });
-    }
-
-    [HttpGet("api/equipment/v2/getUnlocked")]
-    public async Task<IResult> GetEquipmentUnlocked()
-    {
-        return Results.Content("[]", "application/json");
-    }
-
-    [HttpGet("api/consumables/v2/getUnlocked")]
-    [Authorize]
-    public async Task<IResult> GetConsumablesUnlocked(AppDbContext db)
-    {
-        if (!int.TryParse(User.Identity?.Name, out var id))
-            return Results.Unauthorized();
-
-        var consumables = await db.ConsumableItems
-            .Where(c => c.OwnerAccountId == id)
-            .ToListAsync();
-
-        return Results.Json(consumables);
-    }
-
-    [HttpGet("api/storefronts/v4/balance/2")]
-    [Authorize]
-    public async Task<IResult> GetStorefrontBalance(AppDbContext db)
-    {
-        if (!int.TryParse(User.Identity?.Name, out var id))
-            return Results.Unauthorized();
-
-        var balance = await db.TokenBalances
-            .Where(s => s.Id == id)
-            .ToListAsync();
-
-        return Results.Json(balance);
-    }
-
-    [HttpGet("api/storefronts/v3/giftdropstore/3")]
-    public async Task<IResult> GetGiftDropStore3(AppDbContext db, StorefrontFillService storefrontService)
-    {
-        var storefronts = await storefrontService.GetStorefrontsAsync();
-        var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "watch_store");
-        if (storefront == null)
-        {
-            var json = System.IO.File.ReadAllText("JSON/storefront3.json");
-            return Results.Content(json, "application/json");
-        }
-        var storeItems = storefront.Items.Select(item => new
-        {
-            item.Id,
-            item.StorefrontId,
-            item.PurchasableItemId,
-            item.Type,
-            item.IsFeatured,
-            item.NewUntil,
-            GiftDrops = item.GiftDrops.Select(gd => new
-            {
-                gd.Id,
-                gd.StorefrontItemId,
-                gd.GiftDropId,
-                gd.FriendlyName,
-                gd.Tooltip,
-                gd.ConsumableItemDesc,
-                gd.AvatarItemDesc,
-                gd.AvatarItemType,
-                gd.EquipmentPrefabName,
-                gd.EquipmentModificationGuid,
-                gd.IsQuery,
-                gd.Unique,
-                gd.SubscribersOnly,
-                gd.Level,
-                gd.Rarity,
-                gd.CurrencyType,
-                gd.Currency,
-                gd.Context,
-                gd.ItemSetId,
-                gd.ItemSetFriendlyName
-            }).ToList(),
-            Prices = item.Prices.Select(p => new
-            {
-                p.Id,
-                p.StorefrontItemId,
-                p.CurrencyType,
-                p.Price
-            }).ToList()
-        }).ToList();
-        var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
-        return Results.Ok(response);
-    }
-
-    [HttpGet("api/challenge/v2/getCurrent")]
-    public async Task<IResult> GetCurrentChallenge()
-    {
-        var json = System.IO.File.ReadAllText("JSON/weeklychallenge.json");
-        return Results.Content(json, "application/json");
-    }
-
-    [HttpGet("api/avatar/v3/saved")]
-    [Authorize]
-    public async Task<IResult> GetSavedAvatars(AppDbContext db)
-    {
-        if (!int.TryParse(User.Identity?.Name, out var id))
-            return Results.Unauthorized();
-
-        var items = await db.SavedOutfits
-            .Where(i => i.OwnerAccountId == id)
-            .ToListAsync();
-
-        return Results.Json(items);
-    }
-
-    [HttpGet("api/avatar/v2/gifts")]
-    [Authorize]
-    public async Task<IResult> GetGifts(AppDbContext db)
-    {
-        try
-        {
-            if (!int.TryParse(User.Identity?.Name, out var id))
-                return Results.Unauthorized();
-
-            var pendingGifts = await db.ReceivedGifts
-                .Where(rg => rg.ReceiverAccountId == id && !rg.IsConsumed)
-                .ToListAsync();
-
-            return Results.Json(pendingGifts);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem($"Error retrieving gifts: {ex.Message}");
-        }
-    }
-
-    [HttpGet("api/gamerewards/v1/pending")]
-    public async Task<IResult> GetGameRewardsPending()
-    {
-        return Results.Content("[]", "application/json");
-    }
-
-    [HttpGet("api/roomkeys/v1/mine")]
-    public async Task<IResult> GetRoomKeysMine()
-    {
-        return Results.Content("[]", "application/json");
-    }
-
-    [HttpPost("api/CampusCard/v1/UpdateAndGetSubscription")]
-    public async Task<IResult> UpdateAndGetSubscription()
-    {
-        return Results.Json(new { subscription = (object?)null, platformAccountSubscribedPlayerId = (object?)null });
     }
 }
