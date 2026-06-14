@@ -20,10 +20,19 @@ public static class Signatures
             {
                 Console.WriteLine("sigs - creating new sig key");
                 Directory.CreateDirectory("Data");
+
                 using var newKey = RSA.Create(2048);
-                var pem = newKey.ExportPkcs8PrivateKeyPem();
-                File.WriteAllText(pemPath, pem);
-                Console.WriteLine("sigs - key saved to " + pemPath);
+
+                var privatePem = newKey.ExportPkcs8PrivateKeyPem();
+                File.WriteAllText(pemPath, privatePem);
+
+                var publicPem = newKey.ExportSubjectPublicKeyInfoPem();
+                File.WriteAllText(
+                    Path.Combine("Data", "PublicKey.pem"),
+                    publicPem
+                );
+
+                Console.WriteLine("sigs - keys saved");
             }
 
             var pemContent = File.ReadAllText(pemPath);
@@ -36,7 +45,7 @@ public static class Signatures
             Console.WriteLine($"sigs - failed to load key: {ex.Message}");
         }
     }
-    
+
     public static RSA? GetRsaInstance()
     {
         if (!_initialized) Init();

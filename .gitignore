@@ -8,3 +8,4 @@ riderModule.iml
 CannedNet.sln.DotSettings.user
 CannedNet/Data/PrivateKey.pem
 /CannedNet/.zed
+CannedNet/Data/PublicKey.pem

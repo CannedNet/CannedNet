@@ -28,9 +28,11 @@ public class AuthController : ControllerBase
     [HttpPost("connect/token")]
     public async Task<IResult> ConnectToken(AppDbContext db, JwtTokenService jwtService)
     {
+        string grantType = "";
         string accountId = "";
         string platformId = "";
         string platform = "";
+        int platformInt = 0;
 
         if (HttpContext.Request.ContentLength is > 0)
         {
@@ -51,11 +53,18 @@ public class AuthController : ControllerBase
 
                         switch (key)
                         {
+                            case "grant_type":
+                                grantType = value;
+                                break;
                             case "account_id":
                                 accountId = value;
                                 break;
                             case "platform_id":
                                 platformId = value;
+                                break;
+                            case "platform" when int.TryParse(value, out var p):
+                                platformInt = p;
+                                platform = ((PlatformType)p).ToString();
                                 break;
                         }
                     }
@@ -63,6 +72,92 @@ public class AuthController : ControllerBase
                 HttpContext.Request.Body.Position = 0;
             }
             catch { }
+        }
+
+        if (grantType == "create_account")
+        {
+            int newId = new Random().Next(10000, 99999);
+            Account account = new()
+            {
+                AccountId = newId,
+                ProfileImage = "DefaultProfileImage.jpg",
+                IsJunior = false,
+                Platforms = 0,
+                PersonalPronouns = 0,
+                IdentityFlags = 0,
+                Username = $"Player{newId}",
+                DisplayName = $"Player{newId}",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            db.Accounts.Add(account);
+
+            if (!string.IsNullOrEmpty(platformId))
+            {
+                db.CachedLogins.Add(new CachedLogin
+                {
+                    AccountId = newId,
+                    Platform = (PlatformType)platformInt,
+                    PlatformID = platformId,
+                    LastLoginTime = DateTime.UtcNow,
+                    RequirePassword = false
+                });
+            }
+
+            await db.SaveChangesAsync();
+
+            int maxRoomId = await db.Rooms.MaxAsync(r => (int?)r.RoomId) ?? 0;
+            int maxId = await db.Rooms.MaxAsync(r => (int?)r.Id) ?? 0;
+            int dormRoomId = maxRoomId + 1;
+            Room dormRoom = new Room
+            {
+                Id = maxId + 1,
+                RoomId = dormRoomId,
+                Name = "DormRoom",
+                Description = "Your personal room",
+                CreatorAccountId = newId,
+                ImageName = "",
+                State = 0,
+                Accessibility = 0,
+                SupportsLevelVoting = false,
+                IsRRO = false,
+                IsDorm = true,
+                CloningAllowed = false,
+                SupportsVRLow = true,
+                SupportsQuest2 = true,
+                SupportsMobile = true,
+                SupportsScreens = true,
+                SupportsWalkVR = true,
+                SupportsTeleportVR = true,
+                SupportsJuniors = true,
+                MinLevel = 0,
+                WarningMask = 0,
+                CustomWarning = null,
+                DisableMicAutoMute = false,
+                DisableRoomComments = false,
+                EncryptVoiceChat = false,
+                CreatedAt = DateTime.UtcNow,
+                Tags = "[]"
+            };
+            db.Rooms.Add(dormRoom);
+
+            SubRoom dormSubRoom = new SubRoom
+            {
+                RoomId = dormRoomId,
+                SubRoomId = 1,
+                Name = "DormRoom",
+                DataBlob = "",
+                IsSandbox = false,
+                MaxPlayers = 4,
+                Accessibility = 0,
+                UnitySceneId = "76d98498-60a1-430c-ab76-b54a29b7a163",
+                DataSavedAt = DateTime.UtcNow
+            };
+            db.SubRooms.Add(dormSubRoom);
+
+            await db.SaveChangesAsync();
+
+            accountId = newId.ToString();
         }
 
         string accessToken = jwtService.GenerateToken(accountId, platformId, platform);

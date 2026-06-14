@@ -86,7 +86,7 @@ public class SubRoom
     [JsonPropertyName("unitySceneId")]
     public string UnitySceneId { get; set; } = "";
     [JsonPropertyName("dataSavedAt")]
-    public DateTime DataSavedAt { get; set; }
+    public DateTime? DataSavedAt { get; set; }
 }
 
 public class LoadScreen

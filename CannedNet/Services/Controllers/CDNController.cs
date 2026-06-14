@@ -8,7 +8,8 @@ namespace CannedNet.Services.Controllers;
 public class CDNController
 {
     [HttpGet("config/LoadingScreenTipData")]
-    public Task<IResult> GetLoadingScreenTipData() {
+    public Task<IResult> GetLoadingScreenTipData()
+    {
         var json = File.ReadAllText("JSON/loadingscreentipdata.json");
         return Task.FromResult(Results.Content(json, "application/json"));
     }
@@ -17,6 +18,22 @@ public class CDNController
     public async Task<IResult> GetSig(string sigName)
     {
         var filePath = Path.Combine("Sigs", sigName);
+
+        if (File.Exists(filePath))
+        {
+            var sigBytes = await File.ReadAllBytesAsync(filePath);
+            return Results.File(sigBytes, "application/octet-stream");
+        }
+        else
+        {
+            return Results.NotFound();
+        }
+    }
+
+    [HttpGet("room/{dataBlob}")]
+    public async Task<IResult> GetRoom(string dataBlob)
+    {
+        var filePath = Path.Combine("Data", "DataBlobs", dataBlob);
 
         if (File.Exists(filePath))
         {
@@ -42,7 +59,7 @@ public class CDNController
 
             var imageId = Guid.NewGuid().ToString("N");
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                
+
             var validExtensions = new[] { ".png", ".jpg", ".jpeg" };
             if (string.IsNullOrEmpty(extension) || !validExtensions.Contains(extension))
             {
