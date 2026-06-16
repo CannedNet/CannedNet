@@ -1,4 +1,6 @@
 <Solution>
   <Folder Name="/Solution Items/" />
   <Project Path="CannedNet/CannedNet.csproj" />
+  <Project Path="CannedNet.Shared/CannedNet.Shared.csproj" />
+  <Project Path="CannedNet.Admin/CannedNet.Admin.csproj" />
 </Solution>
