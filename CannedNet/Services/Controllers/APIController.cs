@@ -1171,22 +1171,6 @@ public class APIController : ControllerBase
         return Results.Json(consumables);
     }
 
-    [HttpGet("storefronts/v4/balance/2")]
-    [Authorize]
-    public async Task<IResult> GetStorefrontBalance(AppDbContext db)
-    {
-        if (!int.TryParse(User.Identity?.Name, out var id))
-            return Results.Unauthorized();
-
-        var balance = await db.TokenBalances
-            .Where(s => s.Id == id)
-            .ToListAsync();
-
-        return Results.Json(balance);
-    }
-
-
-
     [HttpGet("challenge/v2/getCurrent")]
     public async Task<IResult> GetCurrentChallenge()
     {
@@ -1206,33 +1190,6 @@ public class APIController : ControllerBase
             .ToListAsync();
 
         return Results.Json(items);
-    }
-
-    [HttpGet("avatar/v2/gifts")]
-    [Authorize]
-    public async Task<IResult> GetGifts(AppDbContext db)
-    {
-        try
-        {
-            if (!int.TryParse(User.Identity?.Name, out var id))
-                return Results.Unauthorized();
-
-            var pendingGifts = await db.ReceivedGifts
-                .Where(rg => rg.ReceiverAccountId == id && !rg.IsConsumed)
-                .ToListAsync();
-
-            return Results.Json(pendingGifts);
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem($"Error retrieving gifts: {ex.Message}");
-        }
-    }
-
-    [HttpGet("gamerewards/v1/pending")]
-    public async Task<IResult> GetGameRewardsPending()
-    {
-        return Results.Content("[]", "application/json");
     }
 
     [HttpGet("roomkeys/v1/mine")]
@@ -1311,6 +1268,13 @@ public class APIController : ControllerBase
         }
 
         return ids;
+    }
+
+    [HttpGet("customAvatarItems/v1/isCreationEnabled")]
+    [HttpGet("customAvatarItems/v1/isRenderingEnabled")]
+    public IResult CustomAvatarItemsEnabled()
+    {
+        return Results.Ok(true);
     }
 
 

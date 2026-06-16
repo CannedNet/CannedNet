@@ -7,7 +7,8 @@ namespace CannedNet.Services.Controllers;
 public class NSController : ControllerBase
 {
     [HttpGet]
-    public async Task<IResult> Get() {
+    public async Task<IResult> Get()
+    {
         string json = await System.IO.File.ReadAllTextAsync("JSON/endpoints.json");
         return Results.Content(json, "application/json");
     }

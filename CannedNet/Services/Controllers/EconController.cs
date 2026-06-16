@@ -330,4 +330,45 @@ public class EconController : ControllerBase
         var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
         return Results.Ok(response);
     }
+
+    [HttpGet("api/storefronts/v4/balance/2")]
+    [Authorize]
+    public async Task<IResult> GetStorefrontBalance(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        var balance = await db.TokenBalances
+            .Where(s => s.Id == id)
+            .ToListAsync();
+
+        return Results.Json(balance);
+    }
+
+    [HttpGet("api/avatar/v2/gifts")]
+    [Authorize]
+    public async Task<IResult> GetGifts(AppDbContext db)
+    {
+        try
+        {
+            if (!int.TryParse(User.Identity?.Name, out var id))
+                return Results.Unauthorized();
+
+            var pendingGifts = await db.ReceivedGifts
+                .Where(rg => rg.ReceiverAccountId == id && !rg.IsConsumed)
+                .ToListAsync();
+
+            return Results.Json(pendingGifts);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"Error retrieving gifts: {ex.Message}");
+        }
+    }
+
+    [HttpGet("api/gamerewards/v1/pending")]
+    public async Task<IResult> GetGameRewardsPending()
+    {
+        return Results.Content("[]", "application/json");
+    }
 }
