@@ -41,9 +41,6 @@ public class ImageController : ControllerBase
             contentType = ext switch
             {
                 ".jpg" or ".jpeg" => "image/jpeg",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                ".bmp" => "image/bmp",
                 _ => "image/png"
             };
         }
@@ -59,7 +56,11 @@ public class ImageController : ControllerBase
 
         if (string.IsNullOrEmpty(widthStr) && string.IsNullOrEmpty(heightStr) && string.IsNullOrEmpty(cropSquare))
         {
-            SignImageResponse(context, ref imageBytes);
+            string? signature1 = Signatures.Sign(imageBytes);
+            if (signature1 != null)
+            {
+                context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature1}";
+            }
             return Results.File(imageBytes, contentType);
         }
 
@@ -90,18 +91,11 @@ public class ImageController : ControllerBase
         using MemoryStream output = new();
         await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 85 });
         imageBytes = output.ToArray();
-        SignImageResponse(context, ref imageBytes);
-        return Results.File(imageBytes, "image/jpeg");
-    }
-
-    private static void SignImageResponse(HttpContext context, ref byte[] imageBytes)
-    {
-        if (context.Request.Query["sig"] != "p1") return;
-
         string? signature = Signatures.Sign(imageBytes);
         if (signature != null)
         {
             context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature}";
         }
+        return Results.File(imageBytes, "image/jpeg");
     }
 }

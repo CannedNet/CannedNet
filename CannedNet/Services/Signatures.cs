@@ -39,6 +39,16 @@ public static class Signatures
             _rsa = RSA.Create();
             _rsa.ImportFromPem(pemContent.ToCharArray());
             Console.WriteLine("sigs - key loaded");
+
+            RSAParameters p = _rsa.ExportParameters(false);
+
+            string modulusBase64 = Convert.ToBase64String(p.Modulus!);
+            string exponentBase64 = Convert.ToBase64String(p.Exponent!);
+
+            Console.WriteLine($"Modulus:");
+            Console.WriteLine(modulusBase64);
+            Console.WriteLine("Make sure to replace the modulus in your clients global-metadata to this one or else the game will crash.");
+            Console.WriteLine("Rec Room's modulus in metadata starts with ''")
         }
         catch (Exception ex)
         {

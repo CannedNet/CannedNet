@@ -263,4 +263,71 @@ public class EconController : ControllerBase
     {
         return Results.Ok(new List<object>());
     }
+
+    [HttpGet("api/checklist/v1/current")]
+    public async Task<IResult> GetCurrentChecklist()
+    {
+        var checklist = new List<ChecklistItem>
+        {
+            new ChecklistItem { count = 1, objective = ObjectiveType.PaintballCTFWins, order = 1 },
+            new ChecklistItem { count = 1, objective = ObjectiveType.PaintballFreeForAllGames, order = 2 },
+            new ChecklistItem { count = 1, objective = ObjectiveType.DodgeballGames, order = 3 },
+            new ChecklistItem { count = 1, objective = ObjectiveType.DiscGolfHolesUnderPar, order = 4 }
+        };
+
+        return Results.Ok(checklist);
+    }
+
+    [HttpGet("storefronts/v3/giftdropstore/3")]
+    public async Task<IResult> GetGiftDropStore3(AppDbContext db, StorefrontFillService storefrontService)
+    {
+        var storefronts = await storefrontService.GetStorefrontsAsync();
+        var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "watch_store");
+        if (storefront == null)
+        {
+            var json = System.IO.File.ReadAllText("JSON/storefront3.json");
+            return Results.Content(json, "application/json");
+        }
+        var storeItems = storefront.Items.Select(item => new
+        {
+            item.Id,
+            item.StorefrontId,
+            item.PurchasableItemId,
+            item.Type,
+            item.IsFeatured,
+            item.NewUntil,
+            GiftDrops = item.GiftDrops.Select(gd => new
+            {
+                gd.Id,
+                gd.StorefrontItemId,
+                gd.GiftDropId,
+                gd.FriendlyName,
+                gd.Tooltip,
+                gd.ConsumableItemDesc,
+                gd.AvatarItemDesc,
+                gd.AvatarItemType,
+                gd.EquipmentPrefabName,
+                gd.EquipmentModificationGuid,
+                gd.IsQuery,
+                gd.Unique,
+                gd.SubscribersOnly,
+                gd.Level,
+                gd.Rarity,
+                gd.CurrencyType,
+                gd.Currency,
+                gd.Context,
+                gd.ItemSetId,
+                gd.ItemSetFriendlyName
+            }).ToList(),
+            Prices = item.Prices.Select(p => new
+            {
+                p.Id,
+                p.StorefrontItemId,
+                p.CurrencyType,
+                p.Price
+            }).ToList()
+        }).ToList();
+        var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
+        return Results.Ok(response);
+    }
 }

@@ -60,7 +60,7 @@ public class APIController : ControllerBase
     [HttpGet("players/v1/progression/{id}")]
     public async Task<IResult> GetPlayersV1Progression(string id) => Results.Content($"{{\"PlayerId\":{id},\"Level\":1,\"XP\":0}}", "application/json");
 
-    [HttpPost("playerReputation/v2/bulk")]
+    [HttpGet("playerReputation/v2/bulk")]
     public async Task<IResult> PostPlayerReputationV2Bulk(AppDbContext db)
     {
         /*var ids = await ParseFormIds(httpRequest);
@@ -88,7 +88,7 @@ public class APIController : ControllerBase
         return Results.Content(json, "application/json");
     }
 
-    [HttpPost("players/v2/progression/bulk")]
+    [HttpGet("players/v2/progression/bulk")]
     public async Task<IResult> PostProgressionBulkV2(AppDbContext db)
     {
         List<int> ids = await ParseFormIds(HttpContext.Request);
@@ -1185,58 +1185,7 @@ public class APIController : ControllerBase
         return Results.Json(balance);
     }
 
-    [HttpGet("storefronts/v3/giftdropstore/3")]
-    public async Task<IResult> GetGiftDropStore3(AppDbContext db, StorefrontFillService storefrontService)
-    {
-        var storefronts = await storefrontService.GetStorefrontsAsync();
-        var storefront = storefronts.FirstOrDefault(s => s.StorefrontType == 2 && s.Name == "watch_store");
-        if (storefront == null)
-        {
-            var json = System.IO.File.ReadAllText("JSON/storefront3.json");
-            return Results.Content(json, "application/json");
-        }
-        var storeItems = storefront.Items.Select(item => new
-        {
-            item.Id,
-            item.StorefrontId,
-            item.PurchasableItemId,
-            item.Type,
-            item.IsFeatured,
-            item.NewUntil,
-            GiftDrops = item.GiftDrops.Select(gd => new
-            {
-                gd.Id,
-                gd.StorefrontItemId,
-                gd.GiftDropId,
-                gd.FriendlyName,
-                gd.Tooltip,
-                gd.ConsumableItemDesc,
-                gd.AvatarItemDesc,
-                gd.AvatarItemType,
-                gd.EquipmentPrefabName,
-                gd.EquipmentModificationGuid,
-                gd.IsQuery,
-                gd.Unique,
-                gd.SubscribersOnly,
-                gd.Level,
-                gd.Rarity,
-                gd.CurrencyType,
-                gd.Currency,
-                gd.Context,
-                gd.ItemSetId,
-                gd.ItemSetFriendlyName
-            }).ToList(),
-            Prices = item.Prices.Select(p => new
-            {
-                p.Id,
-                p.StorefrontItemId,
-                p.CurrencyType,
-                p.Price
-            }).ToList()
-        }).ToList();
-        var response = new { storefront.Id, storefront.Name, storefront.StorefrontType, storefront.NextUpdate, StoreItems = storeItems };
-        return Results.Ok(response);
-    }
+
 
     [HttpGet("challenge/v2/getCurrent")]
     public async Task<IResult> GetCurrentChallenge()
