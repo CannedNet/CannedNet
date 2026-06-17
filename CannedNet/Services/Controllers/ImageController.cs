@@ -54,48 +54,37 @@ public class ImageController : ControllerBase
         string? widthStr = context.Request.Query["width"].FirstOrDefault();
         string? heightStr = context.Request.Query["height"].FirstOrDefault();
 
-        if (string.IsNullOrEmpty(widthStr) && string.IsNullOrEmpty(heightStr) && string.IsNullOrEmpty(cropSquare))
+        if (!string.IsNullOrEmpty(widthStr) || !string.IsNullOrEmpty(heightStr) || !string.IsNullOrEmpty(cropSquare))
         {
-            string? signature1 = Signatures.Sign(imageBytes);
-            if (signature1 != null)
+            using Image image = Image.Load(imageBytes);
+
+            if (!string.IsNullOrEmpty(cropSquare) && cropSquare != "0" && cropSquare != "false")
             {
-                context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature1}";
+                int size = Math.Min(image.Width, image.Height);
+                int x = (image.Width - size) / 2;
+                int y = (image.Height - size) / 2;
+                image.Mutate(img => img.Crop(new Rectangle(x, y, size, size)));
             }
-            return Results.File(imageBytes, contentType);
+
+            int resizeWidth = 0, resizeHeight = 0;
+            if (int.TryParse(widthStr, out var w)) resizeWidth = w;
+            if (int.TryParse(heightStr, out var h)) resizeHeight = h;
+            if (resizeWidth > 0 || resizeHeight > 0)
+                image.Mutate(x => x.Resize(resizeWidth, resizeHeight));
+
+            using MemoryStream output = new();
+            await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 85 });
+            imageBytes = output.ToArray();
+            contentType = "image/jpeg";
         }
 
-        using Image image = Image.Load(imageBytes);
-
-        int resizeWidth = 0;
-        int resizeHeight = 0;
-
-        if (!string.IsNullOrEmpty(cropSquare) && cropSquare != "0" && cropSquare != "false")
-        {
-            int size = Math.Min(image.Width, image.Height);
-            int x = (image.Width - size) / 2;
-            int y = (image.Height - size) / 2;
-            image.Mutate(img => img.Crop(new Rectangle(x, y, size, size)));
-        }
-
-        if (int.TryParse(widthStr, out int w))
-            resizeWidth = w;
-
-        if (int.TryParse(heightStr, out int h))
-            resizeHeight = h;
-
-        if (resizeWidth > 0 || resizeHeight > 0)
-        {
-            image.Mutate(x => x.Resize(resizeWidth, resizeHeight));
-        }
-
-        using MemoryStream output = new();
-        await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 85 });
-        imageBytes = output.ToArray();
         string? signature = Signatures.Sign(imageBytes);
-        if (signature != null)
+        context.Response.OnStarting(() =>
         {
-            context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature}";
-        }
-        return Results.File(imageBytes, "image/jpeg");
+            if (signature != null)
+                context.Response.Headers["Content-Signature"] = $"key-id=KEY:RSA:p1.rec.net; data={signature}";
+            return Task.CompletedTask;
+        });
+        return Results.File(imageBytes, contentType);
     }
 }

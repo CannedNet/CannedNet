@@ -58,3 +58,11 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+.card {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    font-weight: 600;
+}

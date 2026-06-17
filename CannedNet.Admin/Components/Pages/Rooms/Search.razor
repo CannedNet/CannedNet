@@ -1,0 +1,96 @@
+@page "/rooms/search"
+@rendermode InteractiveServer
+@inject ImageUrlService Img
+
+<PageTitle>Search Rooms</PageTitle>
+
+<h3>Search Rooms</h3>
+<p class="text-muted">Search for rooms by name, description, or room ID.</p>
+
+<div class="input-group mb-3">
+    <input type="text" class="form-control" placeholder="Search by name, description, or room ID..." @bind="searchQuery" @bind:event="oninput" />
+    <button class="btn btn-primary" @onclick="DoSearch" disabled="@(string.IsNullOrWhiteSpace(searchQuery) || searching)">
+        @(searching ? "Searching..." : "Search")
+    </button>
+</div>
+
+@if (searching)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (results != null && results.Count == 0)
+{
+    <div class="alert alert-info">No rooms found matching "@searchQuery".</div>
+}
+else if (results != null)
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Room ID</th>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Creator</th>
+                    <th>State</th>
+                    <th>Dorm</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var room in results)
+                {
+                    <tr>
+                        <td>@room.RoomId</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(room.ImageName))
+                            {
+                                <img src="@Img.GetUrl(room.ImageName)" alt="room" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;" onerror="this.style.display='none'" />
+                            }
+                        </td>
+                        <td>@room.Name</td>
+                        <td>@room.CreatorAccountId</td>
+                        <td>@room.State</td>
+                        <td>@(room.IsDorm ? "Yes" : "No")</td>
+                        <td>
+                            <a href="rooms/edit/@room.RoomId" class="btn btn-sm btn-outline-primary">Edit</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private string searchQuery = "";
+    private bool searching;
+    private string? error;
+    private List<Room>? results;
+
+    private async Task DoSearch()
+    {
+        searching = true;
+        error = null;
+        results = null;
+
+        try
+        {
+            results = await Http.GetFromJsonAsync<List<Room>>($"/admin/api/rooms/search?q={Uri.EscapeDataString(searchQuery)}");
+        }
+        catch (Exception ex)
+        {
+            error = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            searching = false;
+        }
+    }
+}

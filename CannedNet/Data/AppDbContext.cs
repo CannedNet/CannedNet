@@ -24,7 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<PromoExternalContent> PromoExternalContents { get; set; }
     public DbSet<RoomRole> RoomRoles { get; set; }
     public DbSet<TokenBalance> TokenBalances { get; set; }
-    public DbSet<PlayerBio>  PlayerBios { get; set; }
+    public DbSet<PlayerBio> PlayerBios { get; set; }
     public DbSet<Storefront> Storefronts { get; set; }
     public DbSet<StorefrontItem> StorefrontItems { get; set; }
     public DbSet<GiftDrop> GiftDrops { get; set; }
@@ -98,7 +98,7 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.OwnerAccountId).IsUnique();
             entity.ToTable("player_avatars");
         });
-        
+
         // saved_outfits
         modelBuilder.Entity<SavedOutfit>(entity =>
         {
@@ -108,7 +108,7 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.OwnerAccountId).IsUnique();
             entity.ToTable("saved_outfits");
         });
-        
+
         // room_instances
         modelBuilder.Entity<RoomInstance>(entity =>
         {
@@ -178,7 +178,7 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.RoomId);
             entity.ToTable("room_roles");
         });
-        
+
         // token_balances
         modelBuilder.Entity<TokenBalance>(entity =>
         {
@@ -186,7 +186,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id).IsRequired();
             entity.ToTable("token_balances");
         });
-        
+
         // player_bios
         modelBuilder.Entity<PlayerBio>(entity =>
         {
@@ -277,4 +277,3 @@ public class AppDbContext : DbContext
         });
     }
 }
-

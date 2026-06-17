@@ -1,0 +1,227 @@
+@page "/config/communityboard"
+@rendermode InteractiveServer
+
+<PageTitle>Community Board</PageTitle>
+
+<h3>Community Board</h3>
+<p class="text-muted">Edit the community board content including featured players, announcements, Instagram images, and videos.</p>
+
+@if (loading)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else
+{
+    <form>
+        <div class="card mb-3">
+            <div class="card-header">Current Announcement</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Message</label>
+                    <input type="text" class="form-control" @bind="announcementMessage" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">More Info URL</label>
+                    <input type="text" class="form-control" @bind="announcementUrl" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Featured Player</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Player ID</label>
+                    <input type="number" class="form-control" @bind="featuredPlayerId" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Title Override</label>
+                    <input type="text" class="form-control" @bind="featuredPlayerTitle" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">URL Override</label>
+                    <input type="text" class="form-control" @bind="featuredPlayerUrl" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Videos</div>
+            <div class="card-body">
+                @if (videos.Count == 0)
+                {
+                    <p class="text-muted">No videos.</p>
+                }
+                @for (int i = 0; i < videos.Count; i++)
+                {
+                    var idx = i;
+                    <div class="border rounded p-3 mb-2">
+                        <div class="mb-2">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" @bind="videos[idx].Title" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" rows="2" @bind="videos[idx].Description"></textarea>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Source URL</label>
+                            <input type="text" class="form-control" @bind="videos[idx].SourceUrl" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Blob Name</label>
+                            <input type="text" class="form-control" @bind="videos[idx].BlobName" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Thumbnail Blob</label>
+                            <input type="text" class="form-control" @bind="videos[idx].ThumbnailBlobName" />
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm" @onclick="() => videos.RemoveAt(idx)">Remove</button>
+                    </div>
+                }
+                <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => videos.Add(new VideoEntry())">Add Video</button>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <button type="submit" class="btn btn-success" @onclick="SaveFromForm" disabled="@saving">
+                @(saving ? "Saving..." : "Save Changes")
+            </button>
+            @if (!string.IsNullOrEmpty(saveMessage))
+            {
+                <span class="ms-2 @(saveMessage.Contains("Error") ? "text-danger" : "text-success")">@saveMessage</span>
+            }
+        </div>
+    </form>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private bool loading = true;
+    private bool saving;
+    private string? error;
+    private string? saveMessage;
+
+    private string announcementMessage = "";
+    private string announcementUrl = "";
+    private int featuredPlayerId;
+    private string? featuredPlayerTitle;
+    private string? featuredPlayerUrl;
+    private List<VideoEntry> videos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var jsonContent = await Http.GetStringAsync("/admin/api/config/communityboard");
+
+            using var doc = JsonDocument.Parse(jsonContent);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("currentAnnouncement", out var ann))
+            {
+                announcementMessage = ann.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+                announcementUrl = ann.TryGetProperty("moreInfoUrl", out var u) ? u.GetString() ?? "" : "";
+            }
+
+            if (root.TryGetProperty("featuredPlayer", out var fp))
+            {
+                featuredPlayerId = fp.TryGetProperty("id", out var id) ? id.GetInt32() : 0;
+                featuredPlayerTitle = fp.TryGetProperty("titleOverride", out var t) ? t.GetString() : null;
+                featuredPlayerUrl = fp.TryGetProperty("urlOverride", out var url) ? url.GetString() : null;
+            }
+
+            if (root.TryGetProperty("videos", out var vids))
+            {
+                videos = new List<VideoEntry>();
+                foreach (var v in vids.EnumerateArray())
+                {
+                    videos.Add(new VideoEntry
+                    {
+                        Title = v.TryGetProperty("title", out var title) ? title.GetString() ?? "" : "",
+                        Description = v.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
+                        SourceUrl = v.TryGetProperty("sourceUrl", out var src) ? src.GetString() ?? "" : "",
+                        BlobName = v.TryGetProperty("blobName", out var blob) ? blob.GetString() ?? "" : "",
+                        ThumbnailBlobName = v.TryGetProperty("thumbnailBlobName", out var thumb) ? thumb.GetString() ?? "" : ""
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveFromForm()
+    {
+        saving = true;
+        saveMessage = null;
+        try
+        {
+            var payload = new
+            {
+                featuredPlayer = new
+                {
+                    id = featuredPlayerId,
+                    titleOverride = featuredPlayerTitle,
+                    urlOverride = featuredPlayerUrl
+                },
+                featuredRoomGroup = new
+                {
+                    featuredRoomGroupId = 2,
+                    name = "Featured Rooms",
+                    rooms = new List<object>()
+                },
+                currentAnnouncement = new
+                {
+                    message = announcementMessage,
+                    moreInfoUrl = announcementUrl
+                },
+                instagramImages = new List<object>(),
+                videos = videos.Select(v => new
+                {
+                    blobName = v.BlobName,
+                    title = v.Title,
+                    description = v.Description,
+                    thumbnailBlobName = v.ThumbnailBlobName,
+                    sourceUrl = v.SourceUrl
+                }).ToList()
+            };
+
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }),
+                System.Text.Encoding.UTF8, "application/json");
+            var response = await Http.PutAsync("/admin/api/config/communityboard", content);
+            response.EnsureSuccessStatusCode();
+
+            saveMessage = "Saved successfully!";
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private class VideoEntry
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string SourceUrl { get; set; } = "";
+        public string BlobName { get; set; } = "";
+        public string ThumbnailBlobName { get; set; } = "";
+    }
+}

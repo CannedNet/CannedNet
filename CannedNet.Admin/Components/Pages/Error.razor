@@ -1,12 +1,12 @@
 ﻿@page "/Error"
-@using System.Diagnostics
+@rendermode InteractiveServer
 
 <PageTitle>Error</PageTitle>
 
 <h1 class="text-danger">Error.</h1>
 <h2 class="text-danger">An error occurred while processing your request.</h2>
 
-@if (ShowRequestId)
+@if (!string.IsNullOrEmpty(RequestId))
 {
     <p>
         <strong>Request ID:</strong> <code>@RequestId</code>
@@ -20,17 +20,11 @@
 <p>
     <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
     It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
+    For local debugging, you can enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
     and restarting the app.
 </p>
 
-@code{
-    [CascadingParameter]
-    private HttpContext? HttpContext { get; set; }
-
+@code {
+    [SupplyParameterFromQuery]
     private string? RequestId { get; set; }
-    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
-
-    protected override void OnInitialized() =>
-        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
 }

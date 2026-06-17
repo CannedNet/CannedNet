@@ -177,47 +177,6 @@ public class APIController : ControllerBase
             .Where(s => s.PlayerId == id)
             .ToListAsync();
 
-        if (settings.Count == 0)
-        {
-            var defaults = new List<PlayerSetting>
-            {
-                new() { PlayerId = id, Key = "Recroom.OOBE", Value = "77" },
-                new() { PlayerId = id, Key = "SplitTestAssignedSegments", Value = "1|{\"SplitTesting+PhotonMaxDatagrams_2021_01_11\":\"Off\",\"SplitTesting+Curated_Rooms_2020_08_06\":\"Off\",\"SplitTesting+RoomRecommendationsType_2020_08_14\":\"Aug14MinVisitors35000\"}" },
-                new() { PlayerId = id, Key = "PlayerSessionCount", Value = "13" },
-                new() { PlayerId = id, Key = "TUTORIAL_COMPLETE_MASK", Value = "11" },
-                new() { PlayerId = id, Key = "BACKPACK_FAVORITE_TOOL", Value = "1" },
-                new() { PlayerId = id, Key = "VoiceChat", Value = "2" },
-                new() { PlayerId = id, Key = "VRAUTOSPRINT", Value = "1" },
-                new() { PlayerId = id, Key = "VR_MOVEMENT_MODE", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_SPRINT", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_WALK", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_VEHICLES", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_FLY", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_ROTATE", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_FORCES", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_FALL", Value = "0" },
-                new() { PlayerId = id, Key = "COMFORT_TELEPORT", Value = "0" },
-                new() { PlayerId = id, Key = "ROTATE_IN_PLACE_ENABLED", Value = "1" },
-                new() { PlayerId = id, Key = "ROTATION_INCREMENT", Value = "2" },
-                new() { PlayerId = id, Key = "CONTINUOUS_ROTATION_MODE", Value = "1" },
-                new() { PlayerId = id, Key = "DONT_LOCK_TOOLS_TO_HAND", Value = "0" },
-                new() { PlayerId = id, Key = "QualitySettings", Value = "2" },
-                new() { PlayerId = id, Key = "TeleportBuffer", Value = "0" },
-                new() { PlayerId = id, Key = "IgnoreBuffer", Value = "1" },
-                new() { PlayerId = id, Key = "FIRST_TIME_IN_FLAGS", Value = "0" },
-                new() { PlayerId = id, Key = "ShowRoomCenter", Value = "1" },
-                new() { PlayerId = id, Key = "USER_TRACKING", Value = "1" },
-                new() { PlayerId = id, Key = "STABILIZE_HANDS", Value = "0" },
-                new() { PlayerId = id, Key = "MakerPen_SnappingMode", Value = "2" },
-                new() { PlayerId = id, Key = "Recroom.ChallengeMap", Value = "17" },
-                new() { PlayerId = id, Key = "VoiceFilter2", Value = "1" },
-                new() { PlayerId = id, Key = "SFX_VOLUME_PERCENT_PREF", Value = "1" },
-            };
-            db.PlayerSettings.AddRange(defaults);
-            await db.SaveChangesAsync();
-            settings = defaults;
-        }
-
         return Results.Json(settings);
     }
 

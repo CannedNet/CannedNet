@@ -1,7 +1,57 @@
 ﻿@page "/"
+@attribute [Authorize]
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="admin-dashboard">
+    <h1 class="mb-4">CannedNet Admin Panel</h1>
+    <p class="lead text-muted">Manage your CannedNet Rec Room private server instance.</p>
 
-Welcome to your new app.
+    <div class="row g-4 mt-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Setup</h5>
+                    <p class="card-text">Configure nameserver endpoints, admin accounts, and authentication.</p>
+                    <a href="setup/nameserver" class="btn btn-primary">Go to Setup</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Users</h5>
+                    <p class="card-text">Search, edit, and manage player accounts.</p>
+                    <a href="users/search" class="btn btn-primary">Manage Users</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Rooms</h5>
+                    <p class="card-text">Search, edit, create, and delete rooms and subrooms.</p>
+                    <a href="rooms/search" class="btn btn-primary">Manage Rooms</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Config</h5>
+                    <p class="card-text">Modify server configuration files: NS config, game configs, community board.</p>
+                    <a href="config/nameserver" class="btn btn-primary">Manage Config</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Storefronts</h5>
+                    <p class="card-text">Manage storefront items, prices, and create new items.</p>
+                    <a href="storefronts" class="btn btn-primary">Manage Storefronts</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

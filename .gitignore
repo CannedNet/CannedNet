@@ -9,3 +9,4 @@ CannedNet.sln.DotSettings.user
 CannedNet/Data/PrivateKey.pem
 /CannedNet/.zed
 CannedNet/Data/PublicKey.pem
+CannedNet.Admin/admin_users.json

@@ -1,0 +1,277 @@
+@page "/storefronts"
+@rendermode InteractiveServer
+
+<PageTitle>Storefronts</PageTitle>
+
+<h3>Storefronts</h3>
+<p class="text-muted">Manage storefronts and their items.</p>
+
+@if (loading)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (storefronts == null || storefronts.Count == 0)
+{
+    <div class="alert alert-info">No storefronts found.</div>
+}
+else
+{
+    @foreach (var store in storefronts)
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>@store.Name</strong>
+                <span class="badge bg-secondary">Type: @store.StorefrontType | Items: @(store.Items?.Count ?? 0)</span>
+            </div>
+            <div class="card-body">
+                @if (store.Items != null && store.Items.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>PurchasableItemId</th>
+                                    <th>Type</th>
+                                    <th>Featured</th>
+                                    <th>Prices</th>
+                                    <th>Gift Drops</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in store.Items)
+                                {
+                                    <tr>
+                                        <td>@item.Id</td>
+                                        <td>@item.PurchasableItemId</td>
+                                        <td>@item.Type</td>
+                                        <td>@(item.IsFeatured ? "Yes" : "No")</td>
+                                        <td>
+                                            @if (item.Prices != null && item.Prices.Count > 0)
+                                            {
+                                                @foreach (var p in item.Prices)
+                                                {
+                                                    <div>Type @p.CurrencyType: @p.Price</div>
+                                                }
+                                            }
+                                        </td>
+                                        <td>@(item.GiftDrops?.Count ?? 0)</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditItem(store.Id, item)">Edit</button>
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteItem(store.Id, item.Id)">Delete</button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No items in this storefront.</p>
+                }
+                <button class="btn btn-sm btn-success" @onclick="() => StartCreateItem(store.Id)">+ Add Item</button>
+            </div>
+        </div>
+    }
+
+    @if (showEditModal)
+    {
+        <div class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(editingItem.Id == 0 ? "Create Item" : "Edit Item")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Purchasable Item ID</label>
+                            <input type="number" class="form-control" @bind="editPurchasableItemId" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <input type="number" class="form-control" @bind="editType" />
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" @bind="editIsFeatured" />
+                            <label class="form-check-label">Is Featured</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Until (optional, ISO date)</label>
+                            <input type="text" class="form-control" @bind="editNewUntil" placeholder="2025-12-31T23:59:59" />
+                        </div>
+                        <hr />
+                        <h6>Prices</h6>
+                        <div class="mb-3">
+                            <label class="form-label">Currency Type</label>
+                            <input type="number" class="form-control" @bind="editCurrencyType" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" class="form-control" @bind="editPrice" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="SaveItem" disabled="@savingItem">
+                            @(savingItem ? "Saving..." : "Save")
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrEmpty(modalMessage))
+                    {
+                        <div class="alert @(modalMessage.Contains("Error") ? "alert-danger" : "alert-success") mb-0 mx-3">@modalMessage</div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private bool loading = true;
+    private string? error;
+    private List<Storefront>? storefronts;
+
+    private bool showEditModal;
+    private bool savingItem;
+    private string? modalMessage;
+    private StorefrontItem editingItem = new();
+    private int editingStorefrontId;
+    private int editPurchasableItemId;
+    private int editType;
+    private bool editIsFeatured;
+    private string? editNewUntil;
+    private int editCurrencyType;
+    private int editPrice;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStorefronts();
+    }
+
+    private async Task LoadStorefronts()
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            storefronts = await Http.GetFromJsonAsync<List<Storefront>>("/admin/api/storefronts");
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load storefronts: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void EditItem(int storefrontId, StorefrontItem item)
+    {
+        editingStorefrontId = storefrontId;
+        editingItem = item;
+        editPurchasableItemId = item.PurchasableItemId;
+        editType = item.Type;
+        editIsFeatured = item.IsFeatured;
+        editNewUntil = item.NewUntil?.ToString("o");
+        editCurrencyType = item.Prices?.FirstOrDefault()?.CurrencyType ?? 0;
+        editPrice = item.Prices?.FirstOrDefault()?.Price ?? 0;
+        modalMessage = null;
+        showEditModal = true;
+    }
+
+    private void StartCreateItem(int storefrontId)
+    {
+        editingStorefrontId = storefrontId;
+        editingItem = new StorefrontItem { StorefrontId = storefrontId };
+        editPurchasableItemId = 0;
+        editType = 0;
+        editIsFeatured = false;
+        editNewUntil = null;
+        editCurrencyType = 0;
+        editPrice = 0;
+        modalMessage = null;
+        showEditModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showEditModal = false;
+        modalMessage = null;
+    }
+
+    private async Task SaveItem()
+    {
+        savingItem = true;
+        modalMessage = null;
+        try
+        {
+            if (editingItem.Id == 0)
+            {
+                var payload = new
+                {
+                    purchasableItemId = editPurchasableItemId,
+                    type = editType,
+                    isFeatured = editIsFeatured,
+                    newUntil = editNewUntil,
+                    price = editPrice,
+                    currencyType = editCurrencyType
+                };
+                var response = await Http.PostAsJsonAsync($"/admin/api/storefronts/{editingStorefrontId}/items", payload);
+                response.EnsureSuccessStatusCode();
+                modalMessage = "Item created!";
+            }
+            else
+            {
+                var payload = new
+                {
+                    purchasableItemId = editPurchasableItemId,
+                    type = editType,
+                    isFeatured = editIsFeatured,
+                    newUntil = string.IsNullOrEmpty(editNewUntil) ? null : editNewUntil,
+                    prices = new[] { new { currencyType = editCurrencyType, price = editPrice } }
+                };
+                var response = await Http.PutAsJsonAsync($"/admin/api/storefronts/items/{editingItem.Id}", payload);
+                response.EnsureSuccessStatusCode();
+                modalMessage = "Item updated!";
+            }
+
+            await LoadStorefronts();
+        }
+        catch (Exception ex)
+        {
+            modalMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            savingItem = false;
+        }
+    }
+
+    private async Task DeleteItem(int storefrontId, int itemId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Delete this item?");
+        if (!confirmed) return;
+
+        try
+        {
+            var response = await Http.DeleteAsync($"/admin/api/storefronts/items/{itemId}");
+            response.EnsureSuccessStatusCode();
+            await LoadStorefronts();
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to delete: {ex.Message}";
+        }
+    }
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
+}

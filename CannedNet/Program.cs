@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using CannedNet.Data;
 using CannedNet.Hubs;
 using CannedNet.Services;
 using CannedNet.Services.Infrastructure;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +30,11 @@ public static class Program
         builder.Services.AddSwaggerGen();
 
 
-        builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.PropertyNamingPolicy = null);
+        builder.Services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.PropertyNamingPolicy = null;
+            options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        });
         builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         builder.Services.AddSingleton<NotificationService>();
         builder.Services.AddScoped<StorefrontFillService>();
@@ -66,8 +72,8 @@ public static class Program
                     NameClaimType = ClaimTypes.NameIdentifier,
                     RoleClaimType = "role"
                 };
-            });
-
+            })
+            .AddScheme<AuthenticationSchemeOptions, AdminApiKeyHandler>("AdminApiKey", null);
 
         builder.Services.AddAuthorization();
 
@@ -95,9 +101,6 @@ public static class Program
         using IServiceScope scope = app.Services.CreateScope();
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        StorefrontFillService seedingService = scope.ServiceProvider.GetRequiredService<StorefrontFillService>();
-        await seedingService.FillStorefrontsAsync();
-
         try
         {
             await db.Database.MigrateAsync();
@@ -106,6 +109,9 @@ public static class Program
         {
             await db.Database.EnsureCreatedAsync();
         }
+
+        StorefrontFillService seedingService = scope.ServiceProvider.GetRequiredService<StorefrontFillService>();
+        await seedingService.FillStorefrontsAsync();
 
         Signatures.Init();
 

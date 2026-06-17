@@ -1,0 +1,176 @@
+@page "/rooms/create"
+@rendermode InteractiveServer
+
+<PageTitle>Create Room</PageTitle>
+
+<h3>Create Room</h3>
+<p class="text-muted">Create a new room and optionally a default subroom.</p>
+
+<form>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">Room Details</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Room ID (leave 0 for auto)</label>
+                        <input type="number" class="form-control" @bind="roomId" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" @bind="name" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" rows="3" @bind="description"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Creator Account ID</label>
+                        <input type="number" class="form-control" @bind="creatorAccountId" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Image Name</label>
+                        <input type="text" class="form-control" @bind="imageName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Accessibility</label>
+                        <input type="number" class="form-control" @bind="accessibility" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">SubRoom</div>
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" @bind="createSubRoom" />
+                        <label class="form-check-label">Create a default subroom</label>
+                    </div>
+
+                    @if (createSubRoom)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">SubRoom Name</label>
+                            <input type="text" class="form-control" @bind="subRoomName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Max Players</label>
+                            <input type="number" class="form-control" @bind="maxPlayers" />
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">Platform Support</div>
+                <div class="card-body">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsVRLow" />
+                        <label class="form-check-label">VR Low</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsQuest2" />
+                        <label class="form-check-label">Quest 2</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsMobile" />
+                        <label class="form-check-label">Mobile</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsScreens" />
+                        <label class="form-check-label">Screens</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsWalkVR" />
+                        <label class="form-check-label">Walk VR</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsTeleportVR" />
+                        <label class="form-check-label">Teleport VR</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" @bind="supportsJuniors" />
+                        <label class="form-check-label">Supports Juniors</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" @onclick="CreateRoom" disabled="@creating">
+        @(creating ? "Creating..." : "Create Room")
+    </button>
+    <a href="rooms/search" class="btn btn-outline-secondary ms-2">Cancel</a>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div class="alert mt-3 @(message.Contains("Error") ? "alert-danger" : "alert-success")">@message</div>
+    }
+
+    @if (createdRoom != null)
+    {
+        <div class="alert alert-success mt-2">
+            Room created! <a href="rooms/edit/@createdRoom.RoomId">Edit Room #@createdRoom.RoomId</a>
+        </div>
+    }
+</form>
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private bool creating;
+    private string? message;
+    private Room? createdRoom;
+
+    private int roomId;
+    private string name = "";
+    private string description = "";
+    private int creatorAccountId;
+    private string imageName = "";
+    private int accessibility;
+    private bool createSubRoom = true;
+    private string subRoomName = "";
+    private int maxPlayers = 16;
+    private bool supportsVRLow = true;
+    private bool supportsQuest2 = true;
+    private bool supportsMobile = true;
+    private bool supportsScreens = true;
+    private bool supportsWalkVR = true;
+    private bool supportsTeleportVR = true;
+    private bool supportsJuniors = true;
+
+    private async Task CreateRoom()
+    {
+        creating = true;
+        message = null;
+        try
+        {
+            var payload = new
+            {
+                roomId = roomId > 0 ? roomId : 0,
+                name,
+                description,
+                creatorAccountId,
+                imageName,
+                accessibility,
+                createSubRoom,
+                subRoomName = createSubRoom ? (string.IsNullOrWhiteSpace(subRoomName) ? name : subRoomName) : "",
+                maxPlayers
+            };
+            var response = await Http.PostAsJsonAsync("/admin/api/rooms", payload);
+            response.EnsureSuccessStatusCode();
+            createdRoom = await response.Content.ReadFromJsonAsync<Room>();
+            message = $"Room '{createdRoom?.Name}' created successfully!";
+        }
+        catch (Exception ex)
+        {
+            message = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+}

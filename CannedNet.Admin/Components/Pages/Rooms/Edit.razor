@@ -1,0 +1,358 @@
+@page "/rooms/edit/{RoomId:int}"
+@rendermode InteractiveServer
+@inject ImageUrlService Img
+
+<PageTitle>Edit Room @RoomId</PageTitle>
+
+<h3>Edit Room #@RoomId</h3>
+
+@if (loading)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (roomData == null)
+{
+    <div class="alert alert-warning">Room not found.</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-12">
+            <form>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">Room Info</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Room ID</label>
+                                    <input type="number" class="form-control" @bind="editRoomId" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Name</label>
+                                    <input type="text" class="form-control" @bind="editName" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" rows="3" @bind="editDescription"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Image Name</label>
+                                    <input type="text" class="form-control" @bind="editImageName" />
+                                    @if (!string.IsNullOrEmpty(editImageName))
+                                    {
+                                        <img src="@Img.GetUrl(editImageName)" alt="preview" class="mt-2 img-thumbnail" style="max-width: 200px;" onerror="this.style.display='none'" />
+                                    }
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Creator Account ID</label>
+                                    <input type="number" class="form-control" @bind="editCreatorAccountId" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Tags (JSON)</label>
+                                    <textarea class="form-control font-monospace" rows="3" @bind="editTags"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header">Settings</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">State</label>
+                                    <input type="number" class="form-control" @bind="editState" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Accessibility</label>
+                                    <input type="number" class="form-control" @bind="editAccessibility" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Min Level</label>
+                                    <input type="number" class="form-control" @bind="editMinLevel" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Warning Mask</label>
+                                    <input type="number" class="form-control" @bind="editWarningMask" />
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Custom Warning</label>
+                                    <input type="text" class="form-control" @bind="editCustomWarning" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header">Flags</div>
+                            <div class="card-body">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editIsDorm" />
+                                    <label class="form-check-label">Is Dorm</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editIsRRO" />
+                                    <label class="form-check-label">Is RRO</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editCloningAllowed" />
+                                    <label class="form-check-label">Cloning Allowed</label>
+                                </div>
+                                <hr />
+                                <h6>Platform Support</h6>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsVRLow" />
+                                    <label class="form-check-label">VR Low</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsQuest2" />
+                                    <label class="form-check-label">Quest 2</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsMobile" />
+                                    <label class="form-check-label">Mobile</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsScreens" />
+                                    <label class="form-check-label">Screens</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsWalkVR" />
+                                    <label class="form-check-label">Walk VR</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsTeleportVR" />
+                                    <label class="form-check-label">Teleport VR</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editSupportsJuniors" />
+                                    <label class="form-check-label">Supports Juniors</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (roomData.SubRooms?.Count > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">SubRooms (@roomData.SubRooms.Count)</div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr><th>ID</th><th>SubRoomId</th><th>Name</th><th>Max Players</th><th>Is Sandbox</th><th>Accessibility</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var sub in roomData.SubRooms)
+                                    {
+                                        <tr>
+                                            <td>@sub.Id</td>
+                                            <td>@sub.SubRoomId</td>
+                                            <td>@sub.Name</td>
+                                            <td>@sub.MaxPlayers</td>
+                                            <td>@sub.IsSandbox</td>
+                                            <td>@sub.Accessibility</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                @if (roomData.LoadScreens?.Count > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">Load Screens (@roomData.LoadScreens.Count)</div>
+                        <div class="card-body">
+                            @foreach (var ls in roomData.LoadScreens)
+                            {
+                                <div>@ls.ImageUrl - @ls.Tooltip</div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2 mb-3">
+                    <button type="submit" class="btn btn-success" @onclick="SaveChanges" disabled="@saving">
+                        @(saving ? "Saving..." : "Save Changes")
+                    </button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteRoom" disabled="@deleting">
+                        @(deleting ? "Deleting..." : "Delete Room")
+                    </button>
+                    <a href="rooms/search" class="btn btn-outline-secondary">Back to Search</a>
+                </div>
+
+                @if (!string.IsNullOrEmpty(saveMessage))
+                {
+                    <div class="alert mt-2 @(saveMessage.Contains("Error") || saveMessage.Contains("Failed") ? "alert-danger" : "alert-success")">@saveMessage</div>
+                }
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int RoomId { get; set; }
+
+    private bool loading = true;
+    private bool saving;
+    private bool deleting;
+    private string? error;
+    private string? saveMessage;
+    private RoomDetails? roomData;
+
+    private int editRoomId;
+    private string editName = "";
+    private string editDescription = "";
+    private string editImageName = "";
+    private int editCreatorAccountId;
+    private string editTags = "[]";
+    private int editState;
+    private int editAccessibility;
+    private int editMinLevel;
+    private int editWarningMask;
+    private string? editCustomWarning;
+    private bool editIsDorm;
+    private bool editIsRRO;
+    private bool editCloningAllowed;
+    private bool editSupportsVRLow;
+    private bool editSupportsQuest2;
+    private bool editSupportsMobile;
+    private bool editSupportsScreens;
+    private bool editSupportsWalkVR;
+    private bool editSupportsTeleportVR;
+    private bool editSupportsJuniors;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoom();
+    }
+
+    private async Task LoadRoom()
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            roomData = await Http.GetFromJsonAsync<RoomDetails>($"/admin/api/rooms/{RoomId}");
+
+            if (roomData?.Room != null)
+            {
+                var r = roomData.Room;
+                editRoomId = r.RoomId;
+                editName = r.Name;
+                editDescription = r.Description;
+                editImageName = r.ImageName ?? "";
+                editCreatorAccountId = r.CreatorAccountId;
+                editTags = r.Tags ?? "[]";
+                editState = r.State;
+                editAccessibility = r.Accessibility;
+                editMinLevel = r.MinLevel;
+                editWarningMask = r.WarningMask;
+                editCustomWarning = r.CustomWarning;
+                editIsDorm = r.IsDorm;
+                editIsRRO = r.IsRRO;
+                editCloningAllowed = r.CloningAllowed;
+                editSupportsVRLow = r.SupportsVRLow;
+                editSupportsQuest2 = r.SupportsQuest2;
+                editSupportsMobile = r.SupportsMobile;
+                editSupportsScreens = r.SupportsScreens;
+                editSupportsWalkVR = r.SupportsWalkVR;
+                editSupportsTeleportVR = r.SupportsTeleportVR;
+                editSupportsJuniors = r.SupportsJuniors;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load room: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        saving = true;
+        saveMessage = null;
+        try
+        {
+            var payload = new
+            {
+                name = editName,
+                description = editDescription,
+                imageName = editImageName,
+                state = editState,
+                accessibility = editAccessibility,
+                isDorm = editIsDorm,
+                isRRO = editIsRRO,
+                cloningAllowed = editCloningAllowed,
+                minLevel = editMinLevel,
+                warningMask = editWarningMask,
+                customWarning = editCustomWarning,
+                supportsVRLow = editSupportsVRLow,
+                supportsQuest2 = editSupportsQuest2,
+                supportsMobile = editSupportsMobile,
+                supportsScreens = editSupportsScreens,
+                supportsWalkVR = editSupportsWalkVR,
+                supportsTeleportVR = editSupportsTeleportVR,
+                supportsJuniors = editSupportsJuniors,
+                tags = editTags
+            };
+            var response = await Http.PutAsJsonAsync($"/admin/api/rooms/{RoomId}", payload);
+            response.EnsureSuccessStatusCode();
+            saveMessage = "Room updated successfully!";
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task DeleteRoom()
+    {
+        if (!await ConfirmDelete()) return;
+        deleting = true;
+        saveMessage = null;
+        try
+        {
+            var response = await Http.DeleteAsync($"/admin/api/rooms/{RoomId}");
+            response.EnsureSuccessStatusCode();
+            saveMessage = "Room deleted successfully!";
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            deleting = false;
+        }
+    }
+
+    private async Task<bool> ConfirmDelete()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete room #{RoomId} and all its subrooms, load screens, promotions, and roles? This cannot be undone.");
+        return confirmed;
+    }
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private class RoomDetails
+    {
+        public Room? Room { get; set; }
+        public List<SubRoom>? SubRooms { get; set; }
+        public List<LoadScreen>? LoadScreens { get; set; }
+    }
+}

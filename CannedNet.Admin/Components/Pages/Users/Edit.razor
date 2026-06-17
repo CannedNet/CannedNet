@@ -1,0 +1,278 @@
+@page "/users/edit/{Id:int}"
+@rendermode InteractiveServer
+@inject ImageUrlService Img
+
+<PageTitle>Edit User @Id</PageTitle>
+
+<h3>Edit User #@Id</h3>
+
+@if (loading)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (data == null)
+{
+    <div class="alert alert-warning">User not found.</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    @if (data.Account != null && !string.IsNullOrEmpty(data.Account.ProfileImage))
+                    {
+                        <img src="@Img.GetUrl(data.Account!.ProfileImage)" alt="Profile" class="img-fluid rounded-circle mb-3" style="max-width: 150px; max-height: 150px; object-fit: cover;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22150%22 height=%22150%22><rect fill=%22%23ddd%22 width=%22150%22 height=%22150%22/><text fill=%22%23666%22 font-size=%2250%22 x=%2250%25%22 y=%2255%25%22 text-anchor=%22middle%22>?</text></svg>'" />
+                    }
+                    <h5 class="mt-2">@data.Account!.Username</h5>
+                    <p class="text-muted">@data.Account!.DisplayName</p>
+                    <p class="small">ID: @data.Account!.AccountId</p>
+                </div>
+            </div>
+
+            @if (data.TokenBalances?.Count > 0)
+            {
+                <div class="card mt-3">
+                    <div class="card-header">Token Balances</div>
+                    <div class="card-body">
+                        @foreach (var token in data.TokenBalances)
+                        {
+                            <div>Type @token.CurrencyType: @token.Balance</div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (data.Progression != null)
+            {
+                <div class="card mt-3">
+                    <div class="card-header">Progression</div>
+                    <div class="card-body">
+                        <div>Level: @data.Progression.Level</div>
+                        <div>XP: @data.Progression.Xp</div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-8">
+            <form>
+                <div class="card mb-3">
+                    <div class="card-header">Account Details</div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" @bind="editUsername" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Display Name</label>
+                            <input type="text" class="form-control" @bind="editDisplayName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Profile Image Name</label>
+                            <input type="text" class="form-control" @bind="editProfileImage" />
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" @bind="editIsJunior" />
+                            <label class="form-check-label">Is Junior</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Personal Pronouns</label>
+                            <input type="number" class="form-control" @bind="editPersonalPronouns" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Identity Flags</label>
+                            <input type="number" class="form-control" @bind="editIdentityFlags" />
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(data.Bio))
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">Bio</div>
+                        <div class="card-body">
+                            <p>@data.Bio</p>
+                        </div>
+                    </div>
+                }
+
+                @if (data.AvatarItems?.Count > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">Avatar Items (@data.AvatarItems.Count)</div>
+                        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Rarity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in data.AvatarItems)
+                                    {
+                                        <tr>
+                                            <td>@item.Id</td>
+                                            <td>@item.FriendlyName</td>
+                                            <td>@item.AvatarItemType</td>
+                                            <td>@item.Rarity</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                @if (data.Settings?.Count > 0)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">Player Settings (@data.Settings.Count)</div>
+                        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var setting in data.Settings)
+                            {
+                                <div><strong>@setting.Key:</strong> @setting.Value</div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success" @onclick="SaveChanges" disabled="@saving">
+                        @(saving ? "Saving..." : "Save Changes")
+                    </button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmAndDeleteUser" disabled="@deleting">
+                        @(deleting ? "Deleting..." : "Delete User")
+                    </button>
+                    <a href="users/search" class="btn btn-outline-secondary">Back to Search</a>
+                </div>
+
+                @if (!string.IsNullOrEmpty(saveMessage))
+                {
+                    <div class="alert mt-3 @(saveMessage.Contains("Error") ? "alert-danger" : "alert-success")">@saveMessage</div>
+                }
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private bool loading = true;
+    private bool saving;
+    private bool deleting;
+    private string? error;
+    private string? saveMessage;
+    private AccountDetails? data;
+
+    private string editUsername = "";
+    private string editDisplayName = "";
+    private string editProfileImage = "";
+    private bool editIsJunior;
+    private int editPersonalPronouns;
+    private int editIdentityFlags;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUser();
+    }
+
+    private async Task LoadUser()
+    {
+        loading = true;
+        error = null;
+        try
+        {
+            data = await Http.GetFromJsonAsync<AccountDetails>($"/admin/api/accounts/{Id}");
+            if (data?.Account != null)
+            {
+                editUsername = data.Account.Username ?? "";
+                editDisplayName = data.Account.DisplayName ?? "";
+                editProfileImage = data.Account.ProfileImage ?? "";
+                editIsJunior = data.Account.IsJunior;
+                editPersonalPronouns = data.Account.PersonalPronouns ?? 0;
+                editIdentityFlags = data.Account.IdentityFlags ?? 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load user: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        saving = true;
+        saveMessage = null;
+        try
+        {
+            var payload = new
+            {
+                username = editUsername,
+                displayName = editDisplayName,
+                profileImage = editProfileImage,
+                isJunior = editIsJunior,
+                personalPronouns = editPersonalPronouns,
+                identityFlags = editIdentityFlags
+            };
+            var response = await Http.PutAsJsonAsync($"/admin/api/accounts/{Id}", payload);
+            response.EnsureSuccessStatusCode();
+            saveMessage = "User updated successfully!";
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task ConfirmAndDeleteUser()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete user #{Id}? This cannot be undone.");
+        if (!confirmed) return;
+
+        deleting = true;
+        saveMessage = null;
+        try
+        {
+            var response = await Http.DeleteAsync($"/admin/api/accounts/{Id}");
+            response.EnsureSuccessStatusCode();
+            saveMessage = "User deleted successfully!";
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            deleting = false;
+        }
+    }
+
+    private class AccountDetails
+    {
+        public Account? Account { get; set; }
+        public string? Bio { get; set; }
+        public PlayerProgression? Progression { get; set; }
+        public List<AvatarItem>? AvatarItems { get; set; }
+        public List<PlayerSetting>? Settings { get; set; }
+        public List<TokenBalance>? TokenBalances { get; set; }
+    }
+}

@@ -8,23 +8,69 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+                <div class="nav-section-label px-3 mt-3 mb-1 text-muted small text-uppercase">Setup</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="setup/nameserver">
+                        <span class="bi bi-server-nav-menu" aria-hidden="true"></span> Nameserver
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="setup/accounts">
+                        <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Admin Accounts
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+                <div class="nav-section-label px-3 mt-3 mb-1 text-muted small text-uppercase">Users</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="users/search">
+                        <span class="bi bi-search-nav-menu" aria-hidden="true"></span> Search Users
+                    </NavLink>
+                </div>
+
+                <div class="nav-section-label px-3 mt-3 mb-1 text-muted small text-uppercase">Rooms</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="rooms/search">
+                        <span class="bi bi-building-nav-menu" aria-hidden="true"></span> Search Rooms
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="rooms/create">
+                        <span class="bi bi-plus-circle-fill-nav-menu" aria-hidden="true"></span> Create Room
+                    </NavLink>
+                </div>
+
+                <div class="nav-section-label px-3 mt-3 mb-1 text-muted small text-uppercase">Config</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="config/nameserver">
+                        <span class="bi bi-diagram-3-fill-nav-menu" aria-hidden="true"></span> NS Config
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="config/gameconfig">
+                        <span class="bi bi-sliders-nav-menu" aria-hidden="true"></span> Game Config
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="config/communityboard">
+                        <span class="bi bi-megaphone-fill-nav-menu" aria-hidden="true"></span> Community Board
+                    </NavLink>
+                </div>
+
+                <div class="nav-section-label px-3 mt-3 mb-1 text-muted small text-uppercase">Storefronts</div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="storefronts">
+                        <span class="bi bi-cart-fill-nav-menu" aria-hidden="true"></span> Storefronts
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
-

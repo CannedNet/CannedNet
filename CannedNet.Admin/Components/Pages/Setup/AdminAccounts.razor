@@ -1,0 +1,144 @@
+@page "/setup/accounts"
+@attribute [Authorize(Policy = "OwnerOnly")]
+@rendermode InteractiveServer
+@using CannedNet.Admin.Models
+@using CannedNet.Admin.Services
+@inject AdminAuthService AuthService
+
+<PageTitle>Admin Accounts</PageTitle>
+
+<h3>Admin Accounts</h3>
+<p class="text-muted">Manage admin panel accounts. Only the owner can create or delete accounts.</p>
+
+<div class="card mb-4">
+    <div class="card-header">Create New Admin Account</div>
+    <div class="card-body">
+        <form>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" @bind="newUsername" required />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" @bind="newPassword" required minlength="6" />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" @bind="newConfirmPassword" required />
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success" @onclick="CreateAccount" disabled="@creating">
+                @(creating ? "Creating..." : "Create Account")
+            </button>
+            @if (!string.IsNullOrEmpty(createMessage))
+            {
+                <span class="ms-2 @(createMessage.Contains("Error") ? "text-danger" : "text-success")">@createMessage</span>
+            }
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Admin Accounts</div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in AuthService.GetAll())
+                {
+                    <tr>
+                        <td>@user.Id</td>
+                        <td>@user.Username</td>
+                        <td>
+                            @if (user.IsOwner)
+                            {
+                                <td>Owner</td>
+                            }
+                            else
+                            {
+                                <td>Admin</td>
+                            }
+                        </td>
+                        <td>@user.CreatedAt.ToString("g")</td>
+                        <td>
+                            @if (!user.IsOwner)
+                            {
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private string newUsername = "";
+    private string newPassword = "";
+    private string newConfirmPassword = "";
+    private bool creating;
+    private string? createMessage;
+
+    private async Task CreateAccount()
+    {
+        creating = true;
+        createMessage = null;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(newUsername))
+            {
+                createMessage = "Username is required.";
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            {
+                createMessage = "Password must be at least 6 characters.";
+                return;
+            }
+            if (newPassword != newConfirmPassword)
+            {
+                createMessage = "Passwords do not match.";
+                return;
+            }
+            if (AuthService.GetByUsername(newUsername) != null)
+            {
+                createMessage = "Username already exists.";
+                return;
+            }
+
+            AuthService.CreateUser(newUsername, newPassword, isOwner: false);
+            createMessage = "Admin account created successfully!";
+            newUsername = "";
+            newPassword = "";
+            newConfirmPassword = "";
+        }
+        catch (Exception ex)
+        {
+            createMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            creating = false;
+        }
+    }
+
+    private async Task DeleteUser(int id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Delete this admin account?");
+        if (!confirmed) return;
+        AuthService.DeleteUser(id);
+    }
+
+    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+}

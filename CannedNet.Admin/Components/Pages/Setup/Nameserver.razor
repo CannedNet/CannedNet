@@ -1,0 +1,110 @@
+@page "/setup/nameserver"
+@rendermode InteractiveServer
+@using CannedNet.Admin.Models
+@using System.Text.Json
+
+<PageTitle>Nameserver Setup</PageTitle>
+
+<h3>Nameserver Endpoints</h3>
+<p class="text-muted">Configure the base server URL the game client connects to. All endpoints are derived from this URL.</p>
+
+@if (loading)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else
+{
+    <form>
+        <div class="mb-3">
+            <button type="submit" class="btn btn-success" @onclick="Save" disabled="@saving">
+                @(saving ? "Saving..." : "Save Changes")
+            </button>
+            @if (!string.IsNullOrEmpty(saveMessage))
+            {
+                <span class="@(saveError ? "text-danger" : "text-success") ms-2">@saveMessage</span>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="baseUrl">Base URL:</label>
+            <input id="baseUrl" class="form-control font-monospace" @bind="baseUrl" placeholder="https://cannednet.lapis.codes" />
+            <div class="form-text">All endpoint URLs will use this as the base.</div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Full URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var (name, path) in EndpointDefinitions.Endpoints)
+                    {
+                        <tr>
+                            <td><code>@name</code></td>
+                            <td><code>@(baseUrl.TrimEnd('/') + path)</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </form>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private bool loading = true;
+    private bool saving;
+    private bool saveError;
+    private string? error;
+    private string? saveMessage;
+    private string baseUrl = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var json = await Http.GetStringAsync("/admin/api/endpoints");
+            baseUrl = EndpointDefinitions.ExtractBaseUrl(json);
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        saveMessage = null;
+        saveError = false;
+        try
+        {
+            var json = EndpointDefinitions.BuildEndpointsJson(baseUrl);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            var response = await Http.PutAsync("/admin/api/endpoints", content);
+            response.EnsureSuccessStatusCode();
+            saveMessage = "Saved successfully!";
+        }
+        catch (Exception ex)
+        {
+            saveMessage = $"Error: {ex.Message}";
+            saveError = true;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

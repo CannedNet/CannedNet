@@ -1,0 +1,94 @@
+@page "/users/search"
+@rendermode InteractiveServer
+@inject ImageUrlService Img
+
+<PageTitle>Search Users</PageTitle>
+
+<h3>Search Users</h3>
+<p class="text-muted">Search for player accounts by username, display name, or account ID.</p>
+
+<div class="input-group mb-3">
+    <input type="text" class="form-control" placeholder="Search by username, display name, or ID..." @bind="searchQuery" @bind:event="oninput" />
+    <button class="btn btn-primary" @onclick="DoSearch" disabled="@(string.IsNullOrWhiteSpace(searchQuery) || searching)">
+        @(searching ? "Searching..." : "Search")
+    </button>
+</div>
+
+@if (searching)
+{
+    <div class="spinner-border" role="status"></div>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">@error</div>
+}
+else if (results != null && results.Count == 0)
+{
+    <div class="alert alert-info">No users found matching "@searchQuery".</div>
+}
+else if (results != null)
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Profile Image</th>
+                    <th>Username</th>
+                    <th>Display Name</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var account in results)
+                {
+                    <tr>
+                        <td>@account.AccountId</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(account.ProfileImage))
+                            {
+                                <img src="@Img.GetUrl(account.ProfileImage)" alt="pfp" style="width: 40px; height: 40px; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'" />
+                            }
+                        </td>
+                        <td>@account.Username</td>
+                        <td>@account.DisplayName</td>
+                        <td>@account.CreatedAt.ToString("g")</td>
+                        <td>
+                            <a href="users/edit/@account.AccountId" class="btn btn-sm btn-outline-primary">Edit</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    private string searchQuery = "";
+    private bool searching;
+    private string? error;
+    private List<Account>? results;
+
+    private async Task DoSearch()
+    {
+        searching = true;
+        error = null;
+        results = null;
+
+        try
+        {
+            results = await Http.GetFromJsonAsync<List<Account>>($"/admin/api/accounts/search?q={Uri.EscapeDataString(searchQuery)}");
+        }
+        catch (Exception ex)
+        {
+            error = $"Search failed: {ex.Message}";
+        }
+        finally
+        {
+            searching = false;
+        }
+    }
+}
