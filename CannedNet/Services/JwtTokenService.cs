@@ -15,22 +15,22 @@ public class JwtTokenService
 
     public JwtTokenService()
     {
-        var rsa = Signatures.GetRsaInstance() 
+        var rsa = Signatures.GetRsaInstance()
                   ?? throw new InvalidOperationException("jwt - sigs service was not found");
 
         _securityKey = new RsaSecurityKey(rsa) { KeyId = KeyId };
-        
+
         _signingCredentials = new SigningCredentials(_securityKey, SecurityAlgorithms.RsaSha256);
     }
 
-    public string GenerateToken(string accountId, string platformId, string platform = "Steam")
+    public string GenerateToken(string accountId, string platformId, ConfigService config, string platform = "Steam", List<string>? additionalRoles = null, string amr = "cached_login")
     {
         var now = DateTime.UtcNow;
         var exp = now.AddHours(1);
 
         // theres gotta be some other better way to do this, but im fucking stupid so :shrug:
         // if it works it works ig idk, someone can clean this up later or i will later
-        
+
         var claims = new List<Claim>
         {
             new Claim("iss", "https://lapis.codes"),
@@ -38,7 +38,7 @@ public class JwtTokenService
             new Claim("iat", ((DateTimeOffset)now).ToUnixTimeSeconds().ToString()),
             new Claim("exp", ((DateTimeOffset)exp).ToUnixTimeSeconds().ToString()),
             new Claim("aud", "https://lapis.codes/resources"),
-            new Claim("amr", "cached_login"),
+            new Claim("amr", amr),
             new Claim("client_id", "recroom"),
             new Claim("sub", accountId),
             new Claim("auth_time", ((DateTimeOffset)now).ToUnixTimeSeconds().ToString()),
@@ -48,10 +48,24 @@ public class JwtTokenService
             new Claim("rn.ver", "20210129"),
             new Claim("rn.plat", "0"),
             new Claim("role", "gameClient"),
-            new Claim("role", "developer"),
-            new Claim("role", "moderator"),
-            new Claim("jti", Guid.NewGuid().ToString("N").Substring(0, 32).ToUpper())
+            new Claim("jti", Guid.NewGuid().ToString("N")[..32].ToUpper())
         };
+
+        if (config.Config.DeveloperUserIds.Contains(platformId))
+        {
+            claims.Add(new Claim("role", "developer"));
+        }
+
+        if (config.Config.VModUserIds.Contains(platformId))
+        {
+            claims.Add(new Claim("role", "moderator"));
+        }
+
+        if (additionalRoles != null)
+        {
+            foreach (var role in additionalRoles)
+                claims.Add(new Claim("role", role));
+        }
 
         claims.Add(new Claim("scope", "profile"));
         claims.Add(new Claim("scope", "rn"));
@@ -80,6 +94,8 @@ public class JwtTokenService
             expires: exp,
             signingCredentials: _signingCredentials);
 
+        token.Payload["amr"] = new List<string> { amr };
+
         return handler.WriteToken(token);
     }
 
@@ -89,7 +105,7 @@ public class JwtTokenService
         {
             var handler = new JwtSecurityTokenHandler();
             handler.InboundClaimTypeMap.Clear();
-            
+
             var parameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -103,9 +119,9 @@ public class JwtTokenService
             };
 
             var principal = handler.ValidateToken(token, parameters, out SecurityToken validatedToken);
-            
+
             var accountIdClaim = principal.Claims.FirstOrDefault(c => c.Type == "sub");
-            
+
             return accountIdClaim?.Value;
         }
         catch (Exception ex)
@@ -124,10 +140,10 @@ public class JwtTokenService
 
             var token = authHeader.Substring("Bearer ".Length);
             var accountId = ValidateAndGetAccountId(token);
-            
+
             if (string.IsNullOrEmpty(accountId) || !int.TryParse(accountId, out var id))
                 return null;
-            
+
             return id;
         }
         catch

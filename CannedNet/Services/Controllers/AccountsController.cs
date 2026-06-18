@@ -1,6 +1,7 @@
 using CannedNet.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
 
@@ -100,132 +101,6 @@ public class AccountsController : ControllerBase
         return Results.Json(result);
     }
 
-    [HttpPost("account/create")]
-    public async Task<IResult> Create(AppDbContext db)
-    {
-        var request = HttpContext.Request;
-        int platform = 0;
-        string platformId = "";
-
-        if (request.ContentLength is > 0)
-        {
-            try
-            {
-                string contentType = request.ContentType ?? "";
-                request.EnableBuffering();
-
-                using StreamReader reader = new(request.Body, leaveOpen: true);
-                string body = await reader.ReadToEndAsync();
-
-                if (!string.IsNullOrWhiteSpace(body) && contentType.Contains("application/x-www-form-urlencoded"))
-                {
-                    foreach (string pair in body.Split('&'))
-                    {
-                        string[] keyValue = pair.Split('=');
-                        if (keyValue.Length != 2) continue;
-                        string key = Uri.UnescapeDataString(keyValue[0]);
-                        string value = Uri.UnescapeDataString(keyValue[1]);
-
-                        switch (key)
-                        {
-                            case "platform" when int.TryParse(value, out var parsedPlatform):
-                                platform = parsedPlatform;
-                                break;
-                            case "platformId":
-                                platformId = value;
-                                break;
-                        }
-                    }
-                }
-
-                request.Body.Position = 0;
-            }
-            catch { }
-        }
-
-        int accountId = new Random().Next(10000, 99999);
-        Account account = new()
-        {
-            AccountId = accountId,
-            ProfileImage = "DefaultProfileImage.jpg",
-            IsJunior = false,
-            Platforms = 0,
-            PersonalPronouns = 0,
-            IdentityFlags = 0,
-            Username = $"Player{accountId}",
-            DisplayName = $"Player{accountId}",
-            CreatedAt = DateTime.UtcNow
-        };
-
-        db.Accounts.Add(account);
-
-        if (!string.IsNullOrEmpty(platformId))
-        {
-            db.CachedLogins.Add(new CachedLogin
-            {
-                AccountId = accountId,
-                Platform = (PlatformType)platform,
-                PlatformID = platformId,
-                LastLoginTime = DateTime.UtcNow,
-                RequirePassword = false
-            });
-        }
-
-        await db.SaveChangesAsync();
-
-        int maxRoomId = await db.Rooms.MaxAsync(r => (int?)r.RoomId) ?? 0;
-        int maxId = await db.Rooms.MaxAsync(r => (int?)r.Id) ?? 0;
-        int dormRoomId = maxRoomId + 1;
-        Room dormRoom = new Room
-        {
-            Id = maxId + 1,
-            RoomId = dormRoomId,
-            Name = "DormRoom",
-            Description = "Your personal room",
-            CreatorAccountId = accountId,
-            ImageName = "",
-            State = 0,
-            Accessibility = 0,
-            SupportsLevelVoting = false,
-            IsRRO = false,
-            IsDorm = true,
-            CloningAllowed = false,
-            SupportsVRLow = true,
-            SupportsQuest2 = true,
-            SupportsMobile = true,
-            SupportsScreens = true,
-            SupportsWalkVR = true,
-            SupportsTeleportVR = true,
-            SupportsJuniors = true,
-            MinLevel = 0,
-            WarningMask = 0,
-            CustomWarning = null,
-            DisableMicAutoMute = false,
-            DisableRoomComments = false,
-            EncryptVoiceChat = false,
-            CreatedAt = DateTime.UtcNow,
-            Tags = "[]"
-        };
-        db.Rooms.Add(dormRoom);
-
-        SubRoom dormSubRoom = new SubRoom
-        {
-            RoomId = dormRoomId,
-            SubRoomId = 1,
-            Name = "DormRoom",
-            DataBlob = "",
-            IsSandbox = false,
-            MaxPlayers = 4,
-            Accessibility = 0,
-            UnitySceneId = "76d98498-60a1-430c-ab76-b54a29b7a163",
-            DataSavedAt = DateTime.UtcNow
-        };
-        db.SubRooms.Add(dormSubRoom);
-
-        await db.SaveChangesAsync();
-        return Results.Ok(RecNetResult.Ok(account));
-    }
-
     [HttpPut("me/displayname")]
     [Authorize]
     public async Task<IResult> PutMeDisplayName(AppDbContext db)
@@ -315,6 +190,54 @@ public class AccountsController : ControllerBase
             return Results.NotFound();
 
         account.Username = newAccountName;
+        await db.SaveChangesAsync();
+
+        return Results.Ok(RecNetResult.Ok());
+    }
+
+    [HttpPut("me/changepassword")]
+    [Authorize]
+    public async Task<IResult> PutMePassword(AppDbContext db)
+    {
+        if (!int.TryParse(User.Identity?.Name, out var id))
+            return Results.Unauthorized();
+
+        var request = HttpContext.Request;
+        string newPassword = "";
+
+        if (request.ContentLength is > 0)
+        {
+            try
+            {
+                request.EnableBuffering();
+                using StreamReader reader = new(request.Body, leaveOpen: true);
+                string body = await reader.ReadToEndAsync();
+
+                if (!string.IsNullOrWhiteSpace(body))
+                {
+                    foreach (string pair in body.Split('&'))
+                    {
+                        string[] keyValue = pair.Split('=');
+                        if (keyValue.Length != 2) continue;
+                        string key = Uri.UnescapeDataString(keyValue[0]);
+                        string value = Uri.UnescapeDataString(keyValue[1]);
+
+                        if (key == "newPassword")
+                            newPassword = value;
+                    }
+                }
+
+                request.Body.Position = 0;
+            }
+            catch { }
+        }
+
+        Account? account = await db.Accounts.FindAsync(id);
+        if (account == null)
+            return Results.NotFound();
+
+        var hasher = new PasswordHasher<Account>();
+        account.Password = hasher.HashPassword(account, newPassword);
         await db.SaveChangesAsync();
 
         return Results.Ok(RecNetResult.Ok());

@@ -421,9 +421,9 @@ public class MatchmakingController : ControllerBase
 
         return Results.Json(new
         {
-            playerId = heartbeat.playerId != 0 ? heartbeat.playerId : id,
-            statusVisibility = heartbeat.statusVisibility,
-            deviceClass = heartbeat.deviceClass,
+            PlayerId = heartbeat.playerId != 0 ? heartbeat.playerId : id,
+            StatusVisibility = heartbeat.statusVisibility,
+            DeviceClass = heartbeat.deviceClass,
             vrMovementMode = heartbeat.vrMovementMode != 0 ? heartbeat.vrMovementMode : 1,
             roomInstance = roomInstance != null ? new
             {
@@ -445,9 +445,9 @@ public class MatchmakingController : ControllerBase
                 isInProgress = roomInstance.isInProgress,
                 EncryptVoiceChat = roomInstance.EncryptVoiceChat
             } : null,
-            isOnline = roomInstance != null,
-            appVersion = heartbeat.appVersion ?? "",
-            platform = heartbeat.platform
+            IsOnline = true,
+            AppVersion = heartbeat.appVersion ?? "",
+            Platform = heartbeat.platform
         });
     }
 

@@ -1,13 +1,8 @@
-@using CannedNet.Admin.Services
-@inject AdminAuthService AuthService
 @inject NavigationManager Navigation
 
 @code {
     protected override void OnInitialized()
     {
-        if (!AuthService.HasAnyUser())
-            Navigation.NavigateTo("/setup", forceLoad: true);
-        else
-            Navigation.NavigateTo("/login", forceLoad: true);
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 }

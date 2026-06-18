@@ -1,52 +1,33 @@
 @page "/login"
 @rendermode InteractiveServer
-@using CannedNet.Admin.Services
-@inject AdminAuthService AuthService
 @inject NavigationManager Navigation
 
 <PageTitle>Login</PageTitle>
 
-@if (AuthService.HasAnyUser() == false)
-{
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h4>No Admin Accounts</h4>
-                    <p class="text-muted">No admin accounts exist yet. Complete the first-time setup.</p>
-                    <a href="/setup" class="btn btn-primary">Go to Setup</a>
-                </div>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><h4 class="mb-0">Admin Login</h4></div>
+            <div class="card-body">
+                <form method="post" action="/admin/login">
+                    @if (errorMessage != null)
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                </form>
             </div>
         </div>
     </div>
-}
-else
-{
-    <div class="row justify-content-center mt-5">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header"><h4 class="mb-0">Admin Login</h4></div>
-                <div class="card-body">
-                    <form method="post" action="/admin/login">
-                        @if (errorMessage != null)
-                        {
-                            <div class="alert alert-danger">@errorMessage</div>
-                        }
-                        <div class="mb-3">
-                            <label class="form-label">Username</label>
-                            <input type="text" name="username" class="form-control" required />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Password</label>
-                            <input type="password" name="password" class="form-control" required />
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Login</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+</div>
 
 @code {
     private string? errorMessage;

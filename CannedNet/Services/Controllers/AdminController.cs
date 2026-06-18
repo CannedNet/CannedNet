@@ -8,26 +8,10 @@ using Microsoft.EntityFrameworkCore;
 namespace CannedNet.Services.Controllers;
 
 [ApiController, Route("admin/api")]
-[Authorize(AuthenticationSchemes = "AdminApiKey")]
+[Authorize(Roles = "developer,admin")]
 public class AdminController : ControllerBase
 {
     private const string JsonDir = "JSON";
-
-    [HttpGet("endpoints")]
-    public async Task<IResult> GetEndpoints()
-    {
-        var json = await System.IO.File.ReadAllTextAsync(Path.Combine(JsonDir, "endpoints.json"));
-        return Results.Content(json, "application/json");
-    }
-
-    [HttpPut("endpoints")]
-    public async Task<IResult> SaveEndpoints()
-    {
-        using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync();
-        await System.IO.File.WriteAllTextAsync(Path.Combine(JsonDir, "endpoints.json"), body);
-        return Results.Ok(new { success = true });
-    }
 
     [HttpGet("accounts/search")]
     public async Task<IResult> SearchAccounts([FromQuery] string q, AppDbContext db)
@@ -213,98 +197,6 @@ public class AdminController : ControllerBase
         db.Rooms.Remove(room);
         await db.SaveChangesAsync();
         return Results.Ok(new { success = true });
-    }
-
-    [HttpPost("rooms")]
-    public async Task<IResult> CreateRoom(AppDbContext db)
-    {
-        using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync();
-        var data = JsonSerializer.Deserialize<JsonElement>(body);
-
-        int maxRoomId = await db.Rooms.MaxAsync(r => (int?)r.RoomId) ?? 0;
-        int maxId = await db.Rooms.MaxAsync(r => (int?)r.Id) ?? 0;
-        int newRoomId = data.TryGetProperty("roomId", out var rid) ? rid.GetInt32() : maxRoomId + 1;
-
-        var room = new Room
-        {
-            Id = maxId + 1,
-            RoomId = newRoomId,
-            Name = data.TryGetProperty("name", out var name) ? name.GetString() ?? "New Room" : "New Room",
-            Description = data.TryGetProperty("description", out var desc) ? desc.GetString() ?? "" : "",
-            CreatorAccountId = data.TryGetProperty("creatorAccountId", out var creatorId) ? creatorId.GetInt32() : 0,
-            ImageName = data.TryGetProperty("imageName", out var img) ? img.GetString() ?? "" : "",
-            State = data.TryGetProperty("state", out var state) ? state.GetInt32() : 0,
-            Accessibility = data.TryGetProperty("accessibility", out var accessibility) ? accessibility.GetInt32() : 0,
-            IsDorm = false,
-            IsRRO = false,
-            CloningAllowed = true,
-            SupportsVRLow = true,
-            SupportsQuest2 = true,
-            SupportsMobile = true,
-            SupportsScreens = true,
-            SupportsWalkVR = true,
-            SupportsTeleportVR = true,
-            SupportsJuniors = true,
-            MinLevel = 0,
-            WarningMask = 0,
-            CreatedAt = DateTime.UtcNow,
-            Tags = "[]"
-        };
-
-        db.Rooms.Add(room);
-        await db.SaveChangesAsync();
-
-        // create default subroom
-        if (data.TryGetProperty("createSubRoom", out var createSub) && createSub.GetBoolean())
-        {
-            var sub = new SubRoom
-            {
-                RoomId = newRoomId,
-                SubRoomId = 1,
-                Name = room.Name,
-                DataBlob = "",
-                IsSandbox = false,
-                MaxPlayers = 16,
-                Accessibility = 0,
-                // TODO: allow changing this scene id thru the dashboard
-                UnitySceneId = "00000000-0000-0000-0000-000000000000"
-            };
-            db.SubRooms.Add(sub);
-            await db.SaveChangesAsync();
-        }
-
-        return Results.Ok(room);
-    }
-
-    [HttpPost("rooms/{roomId:int}/subrooms")]
-    public async Task<IResult> CreateSubRoom(int roomId, AppDbContext db)
-    {
-        var room = await db.Rooms.FirstOrDefaultAsync(r => r.RoomId == roomId);
-        if (room == null)
-            return Results.NotFound();
-
-        using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync();
-        var data = JsonSerializer.Deserialize<JsonElement>(body);
-
-        int maxSubId = await db.SubRooms.Where(s => s.RoomId == roomId).MaxAsync(s => (int?)s.SubRoomId) ?? 0;
-
-        var sub = new SubRoom
-        {
-            RoomId = roomId,
-            SubRoomId = maxSubId + 1,
-            Name = data.TryGetProperty("name", out var name) ? name.GetString() ?? "New SubRoom" : "New SubRoom",
-            DataBlob = data.TryGetProperty("dataBlob", out var dataBlob) ? dataBlob.GetString() ?? "" : "",
-            IsSandbox = data.TryGetProperty("isSandbox", out var isSandbox) && isSandbox.GetBoolean(),
-            MaxPlayers = data.TryGetProperty("maxPlayers", out var maxPlayers) ? maxPlayers.GetInt32() : 16,
-            Accessibility = data.TryGetProperty("accessibility", out var accessibility) ? accessibility.GetInt32() : 0,
-            UnitySceneId = data.TryGetProperty("unitySceneId", out var sceneId) ? sceneId.GetString() ?? "" : "",
-        };
-
-        db.SubRooms.Add(sub);
-        await db.SaveChangesAsync();
-        return Results.Ok(sub);
     }
 
     [HttpGet("config/gameconfigs")]

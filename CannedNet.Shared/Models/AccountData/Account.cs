@@ -13,4 +13,5 @@ public class Account
     [JsonPropertyName("username")] public string? Username { get; set; }
     [JsonPropertyName("displayName")] public string? DisplayName { get; set; }
     [JsonPropertyName("createdAt")] public DateTime CreatedAt { get; set; }
+    [JsonPropertyName("password")] public string? Password { get; set; }
 }

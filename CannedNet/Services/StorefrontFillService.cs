@@ -10,12 +10,14 @@ public class StorefrontFillService
     private readonly AppDbContext _dbContext;
     private readonly ILogger<StorefrontFillService> _logger;
     private readonly IWebHostEnvironment _environment;
+    private readonly ConfigService _config;
 
-    public StorefrontFillService(AppDbContext dbContext, ILogger<StorefrontFillService> logger, IWebHostEnvironment environment)
+    public StorefrontFillService(AppDbContext dbContext, ILogger<StorefrontFillService> logger, IWebHostEnvironment environment, ConfigService config)
     {
         _dbContext = dbContext;
         _logger = logger;
         _environment = environment;
+        _config = config;
     }
 
     public async Task FillStorefrontsAsync()
@@ -23,6 +25,11 @@ public class StorefrontFillService
         try
         {
             if (await _dbContext.Storefronts.AnyAsync())
+            {
+                return;
+            }
+
+            if (!_config.Config.AutoFillStorefronts)
             {
                 return;
             }
@@ -81,7 +88,7 @@ public class StorefrontFillService
             {
                 Name = name,
                 StorefrontType = storefrontType,
-                NextUpdate = root.TryGetProperty("NextUpdate", out var nextUpdate) 
+                NextUpdate = root.TryGetProperty("NextUpdate", out var nextUpdate)
                     ? DateTime.SpecifyKind(DateTime.Parse(nextUpdate.GetString() ?? DateTime.UtcNow.ToString()), DateTimeKind.Utc)
                     : DateTime.UtcNow.AddDays(7)
             };

@@ -1,4 +1,5 @@
 using CannedNet.Data;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,13 +27,16 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("connect/token")]
-    public async Task<IResult> ConnectToken(AppDbContext db, JwtTokenService jwtService)
+    public async Task<IResult> ConnectToken(AppDbContext db, JwtTokenService jwtService, ConfigService config)
     {
         string grantType = "";
         string accountId = "";
         string platformId = "";
         string platform = "";
         int platformInt = 0;
+        string password = "";
+        string username = "";
+        List<string> adminRoles = [];
 
         if (HttpContext.Request.ContentLength is > 0)
         {
@@ -61,10 +65,21 @@ public class AuthController : ControllerBase
                                 break;
                             case "platform_id":
                                 platformId = value;
+                                if (config.Config.WhitelistOn)
+                                {
+                                    if (!config.Config.WhitelistedPlatformIds.Contains(platformId))
+                                        return Results.Unauthorized();
+                                }
                                 break;
                             case "platform" when int.TryParse(value, out var p):
                                 platformInt = p;
                                 platform = ((PlatformType)p).ToString();
+                                break;
+                            case "username":
+                                username = value;
+                                break;
+                            case "password":
+                                password = value;
                                 break;
                         }
                     }
@@ -76,6 +91,11 @@ public class AuthController : ControllerBase
 
         if (grantType == "create_account")
         {
+            if (!config.Config.EnableAccountCreation)
+            {
+                return Results.Ok(RecNetResult.Err("Account creation is disabled"));
+            }
+
             int newId = new Random().Next(10000, 99999);
             Account account = new()
             {
@@ -159,8 +179,27 @@ public class AuthController : ControllerBase
 
             accountId = newId.ToString();
         }
+        else if (grantType == "password")
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                return Results.Ok(RecNetResult.Err("Username and password are required"));
 
-        string accessToken = jwtService.GenerateToken(accountId, platformId, platform);
+            var account = await db.Accounts.FirstOrDefaultAsync(a => a.Username == username);
+            if (account == null || string.IsNullOrEmpty(account.Password))
+                return Results.Ok(RecNetResult.Err("Invalid username or password"));
+
+            var hasher = new PasswordHasher<Account>();
+            var result = hasher.VerifyHashedPassword(account, account.Password, password);
+            if (result == PasswordVerificationResult.Failed)
+                return Results.Ok(RecNetResult.Err("Invalid username or password"));
+
+            accountId = account.AccountId?.ToString() ?? "";
+            if (account.AccountId != null && config.Config.AdminAccountIds.Contains(account.AccountId.Value.ToString()))
+                adminRoles.Add("developer");
+            platformId = accountId;
+        }
+
+        string accessToken = jwtService.GenerateToken(accountId, platformId, config, platform, grantType == "password" ? adminRoles : null, amr: grantType == "create_account" ? "create_account" : "cached_login");
 
         if (!string.IsNullOrEmpty(accountId) && int.TryParse(accountId, out var id))
         {

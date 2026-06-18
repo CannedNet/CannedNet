@@ -39,6 +39,7 @@ public static class Program
         builder.Services.AddSingleton<NotificationService>();
         builder.Services.AddScoped<StorefrontFillService>();
         builder.Services.AddScoped<JwtTokenService>();
+        builder.Services.AddSingleton<ConfigService>();
         builder.Services.AddSignalR();
 
         builder.Services.AddAuthentication(options =>
@@ -70,7 +71,7 @@ public static class Program
                     ClockSkew = TimeSpan.Zero,
 
                     NameClaimType = ClaimTypes.NameIdentifier,
-                    RoleClaimType = "role"
+                    RoleClaimType = ClaimTypes.Role
                 };
             })
             .AddScheme<AuthenticationSchemeOptions, AdminApiKeyHandler>("AdminApiKey", null);
@@ -89,14 +90,15 @@ public static class Program
         IHubContext<NotificationsHub> hubContext = app.Services.GetRequiredService<IHubContext<NotificationsHub>>();
         NotificationService.SetHubContext(hubContext);
 
-        //if (app.Environment.IsDevelopment()) {
-        app.UseSwagger();
-        app.UseSwaggerUI(options =>
+        if (app.Environment.IsDevelopment())
         {
-            options.SwaggerEndpoint("/swagger/v1/swagger.json", "CannedNet v1");
-            options.RoutePrefix = "swagger/ui/";
-        });
-        //}
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "CannedNet v1");
+                options.RoutePrefix = "swagger/ui/";
+            });
+        }
 
         using IServiceScope scope = app.Services.CreateScope();
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -117,50 +119,4 @@ public static class Program
 
         await app.RunAsync();
     }
-
-    //public static async Task T() {
-    //    List<(WebApplication App, ServiceRegistry Service)> apps = new();
-    //
-    //    foreach (var service in Services.Infrastructure.Services.All)
-    //    {
-    //        var builder = WebApplication.CreateBuilder();
-    //
-    //        builder.Services.AddLogging(logging =>
-    //        {
-    //            logging.AddConsole();
-    //            logging.SetMinimumLevel(LogLevel.Debug);
-    //        });
-    //
-    //        service.ConfigureBuilder(builder);
-    //        builder.WebHost.UseUrls($"http://*:{service.Port}");
-    //        builder.Configuration.AddJsonFile($"AppConfigs/appsettings.{service.Name}.json", optional: true, reloadOnChange: true);
-    //
-    //        apps.Add((builder.Build(), service));
-    //    }
-    //
-    //    using var scope = apps[0].App.Services.CreateScope();
-    //    var dbContext = scope.ServiceProvider.GetRequiredService<CannedNet.Data.AppDbContext>();
-    //    try
-    //    {
-    //        dbContext.Database.Migrate();
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        dbContext.Database.EnsureCreated();
-    //    }
-    //
-    //    // automatically fill out storefronts tables from the JSON's
-    //    var seedingService = scope.ServiceProvider.GetRequiredService<StorefrontFillService>();
-    //    await seedingService.FillStorefrontsAsync();
-    //
-    //    var jwtService = scope.ServiceProvider.GetRequiredService<JwtTokenService>();
-    //
-    //    foreach (var (app, service) in apps)
-    //    {
-    //        service.MapEndpoints(app, jwtService);
-    //        app.UseRequestLogging();
-    //    }
-    //
-    //    await Task.WhenAll(apps.Select(t => t.App.RunAsync()));
-    //}
 }
