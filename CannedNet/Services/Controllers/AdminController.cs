@@ -199,35 +199,6 @@ public class AdminController : ControllerBase
         return Results.Ok(new { success = true });
     }
 
-    [HttpGet("config/gameconfigs")]
-    public async Task<IResult> GetGameConfigs()
-    {
-        var json = await System.IO.File.ReadAllTextAsync(Path.Combine(JsonDir, "gameconfigs.json"));
-        return Results.Content(json, "application/json");
-    }
-
-    [HttpPut("config/gameconfigs")]
-    public async Task<IResult> SaveGameConfigs()
-    {
-        try
-        {
-            using var reader = new StreamReader(Request.Body);
-            var body = await reader.ReadToEndAsync();
-
-            Console.WriteLine(body);
-
-            var path = Path.Combine(JsonDir, "gameconfigs.json");
-
-            await System.IO.File.WriteAllTextAsync(path, body);
-
-            return Results.Ok(new { success = true });
-        }
-        catch (Exception ex)
-        {
-            return Results.Problem(ex.ToString());
-        }
-    }
-
     [HttpGet("config/communityboard")]
     public async Task<IResult> GetCommunityBoard()
     {
