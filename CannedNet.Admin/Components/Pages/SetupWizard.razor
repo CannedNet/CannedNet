@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject AdminConfigService AdminConfig
 @inject NavigationManager Navigation
+@using System.Net.Http.Json
 
 <PageTitle>First-Time Setup</PageTitle>
 
@@ -60,6 +61,11 @@ else
     private bool error;
     private string errorMessage = "";
 
+    private class KeyResponse
+    {
+        public string? apiKey { get; set; }
+    }
+
     private async Task Save()
     {
         saving = true;
@@ -83,7 +89,26 @@ else
                 return;
             }
 
+            edit.NsBaseUrl = edit.ServerBaseUrl;
             AdminConfig.Save(edit);
+
+            try
+            {
+                using var client = new HttpClient();
+                client.BaseAddress = new Uri(edit.ServerBaseUrl.TrimEnd('/'));
+
+                var keyResp = await client.GetFromJsonAsync<KeyResponse>("/admin/api/setup/key");
+                if (keyResp?.apiKey != null)
+                {
+                    client.DefaultRequestHeaders.Add("X-Admin-Api-Key", keyResp.apiKey);
+                    await client.PostAsJsonAsync("/admin/api/setup/baseurl", new { baseUrl = edit.ServerBaseUrl });
+                }
+            }
+            catch
+            {
+                // server config update is best-effort during setup
+            }
+
             saved = true;
             await Task.Delay(1000);
             Navigation.NavigateTo("/login", forceLoad: true);

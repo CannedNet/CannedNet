@@ -42,5 +42,6 @@ public class AdminConfigService
     public class AdminConfigData
     {
         public string ServerBaseUrl { get; set; } = "";
+        public string NsBaseUrl { get; set; } = "";
     }
 }

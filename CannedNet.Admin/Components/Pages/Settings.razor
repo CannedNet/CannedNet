@@ -80,6 +80,7 @@
                 return;
             }
 
+            edit.NsBaseUrl = edit.ServerBaseUrl;
             AdminConfig.Save(edit);
             saved = true;
         }

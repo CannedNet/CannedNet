@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 using CannedNet.Data;
 using CannedNet.Hubs;
@@ -41,6 +42,23 @@ public static class Program
         builder.Services.AddScoped<JwtTokenService>();
         builder.Services.AddSingleton<ConfigService>();
         builder.Services.AddSignalR();
+
+        var adminApiKey = builder.Configuration["Admin:ApiKey"];
+        if (string.IsNullOrEmpty(adminApiKey))
+        {
+            var keyFile = Path.Combine("Data", ".admin_key");
+            if (File.Exists(keyFile))
+            {
+                adminApiKey = File.ReadAllText(keyFile).Trim();
+            }
+            else
+            {
+                adminApiKey = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+                Directory.CreateDirectory("Data");
+                File.WriteAllText(keyFile, adminApiKey);
+            }
+            builder.Configuration["Admin:ApiKey"] = adminApiKey;
+        }
 
         builder.Services.AddAuthentication(options =>
             {

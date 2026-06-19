@@ -360,3 +360,42 @@ public class AdminController : ControllerBase
         return Results.Ok(new { success = true });
     }
 }
+
+[ApiController, Route("admin/api/setup")]
+public class SetupController : ControllerBase
+{
+    private static readonly string SetupCompleteFile = Path.Combine("Data", ".setup_complete");
+
+    [HttpGet("key")]
+    public IResult GetKey([FromServices] IConfiguration config)
+    {
+        if (System.IO.File.Exists(SetupCompleteFile))
+            return Results.NotFound();
+
+        var key = config["Admin:ApiKey"] ?? "";
+        return Results.Ok(new { apiKey = key });
+    }
+
+    [HttpPost("baseurl")]
+    [Authorize(AuthenticationSchemes = "AdminApiKey")]
+    public async Task<IResult> SetBaseUrl([FromServices] ConfigService configService)
+    {
+        using var reader = new StreamReader(Request.Body);
+        var body = await reader.ReadToEndAsync();
+        var data = JsonSerializer.Deserialize<JsonElement>(body);
+
+        if (!data.TryGetProperty("baseUrl", out var baseUrlEl) || baseUrlEl.ValueKind != JsonValueKind.String)
+            return Results.BadRequest(new { error = "baseUrl is required" });
+
+        var baseUrl = baseUrlEl.GetString() ?? "";
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return Results.BadRequest(new { error = "baseUrl cannot be empty" });
+
+        var current = configService.Config;
+        current.BaseUrl = baseUrl.TrimEnd('/');
+        configService.SaveConfig(current);
+        System.IO.File.WriteAllText(SetupCompleteFile, "done");
+
+        return Results.Ok(new { success = true });
+    }
+}
