@@ -1,0 +1,91 @@
+@page "/settings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject AdminConfigService AdminConfig
+@inject NavigationManager Navigation
+
+<PageTitle>Admin Settings</PageTitle>
+
+<h3>Admin Settings</h3>
+
+@if (saved)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        Settings saved. New sessions will use the updated URLs.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (error)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @errorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p class="text-muted">
+            These settings control where the admin panel connects to the CannedNet server API.
+            If you accidentally change this to the wrong server, please manually change the URL in <code>admin_config.json</code>.
+        </p>
+
+        <div class="mb-3">
+            <label for="serverUrl" class="form-label">Server Base URL</label>
+            <input type="url" class="form-control" id="serverUrl" @bind="edit.ServerBaseUrl" />
+        </div>
+
+        <button class="btn btn-primary" @onclick="Save" disabled="@saving">
+            @(saving ? "Saving..." : "Save Settings")
+        </button>
+    </div>
+</div>
+
+@code {
+    private AdminConfigService.AdminConfigData edit = new();
+    private bool saving;
+    private bool saved;
+    private bool error;
+    private string errorMessage = "";
+
+    protected override void OnInitialized()
+    {
+        edit = new AdminConfigService.AdminConfigData
+        {
+            ServerBaseUrl = AdminConfig.ServerBaseUrl
+        };
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        saved = false;
+        error = false;
+        errorMessage = "";
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(edit.ServerBaseUrl))
+            {
+                error = true;
+                errorMessage = "Server Base URL cannot be empty.";
+                return;
+            }
+
+            if (!Uri.TryCreate(edit.ServerBaseUrl, UriKind.Absolute, out _))
+            {
+                error = true;
+                errorMessage = "Server Base URL is not a valid absolute URL.";
+                return;
+            }
+
+            AdminConfig.Save(edit);
+            saved = true;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

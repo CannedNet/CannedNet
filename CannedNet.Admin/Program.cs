@@ -26,22 +26,26 @@ builder.Services.AddAuthentication("AdminCookie")
 
 builder.Services.AddAuthorization();
 
-var imagesBaseUrl = builder.Configuration.GetValue<string>("ImagesBaseUrl") ?? "http://localhost:5000/img";
-builder.Services.AddSingleton(new ImageUrlService(imagesBaseUrl));
+builder.Services.AddSingleton<AdminConfigService>();
 builder.Services.AddHttpContextAccessor();
 
-var serverUrl = builder.Configuration.GetValue<string>("ServerBaseUrl") ?? "http://localhost:5000";
+builder.Services.AddScoped(sp =>
+{
+    var config = sp.GetRequiredService<AdminConfigService>();
+    return new ImageUrlService(config.ImagesBaseUrl);
+});
+
+
 builder.Services.AddTransient<JwtBearerHandler>();
 builder.Services.AddScoped(sp =>
 {
+    var config = sp.GetRequiredService<AdminConfigService>();
     var handler = sp.GetRequiredService<JwtBearerHandler>();
     handler.InnerHandler = new SocketsHttpHandler();
-    return new HttpClient(handler) { BaseAddress = new Uri(serverUrl) };
+    return new HttpClient(handler) { BaseAddress = new Uri(config.ServerBaseUrl) };
 });
 
 var app = builder.Build();
-
-// --- Admin Auth Endpoints ---
 
 app.MapPost("/admin/login", async (HttpContext context) =>
 {
@@ -55,8 +59,8 @@ app.MapPost("/admin/login", async (HttpContext context) =>
         return;
     }
 
-    var serverUrl = app.Services.GetRequiredService<IConfiguration>().GetValue<string>("ServerBaseUrl") ?? "http://localhost:5000";
-    using var httpClient = new HttpClient { BaseAddress = new Uri(serverUrl) };
+    var adminConfig = app.Services.GetRequiredService<AdminConfigService>();
+    using var httpClient = new HttpClient { BaseAddress = new Uri(adminConfig.ServerBaseUrl) };
     var tokenResponse = await httpClient.PostAsync("/auth/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
     {
         ["grant_type"] = "password",
@@ -100,7 +104,6 @@ app.MapPost("/admin/login", async (HttpContext context) =>
         new("access_token", accessToken)
     };
 
-    // Map JWT roles for admin app authorization
     if (role.Split(',', StringSplitOptions.RemoveEmptyEntries).Any(rr => rr == "developer" || rr == "admin"))
         claims.Add(new Claim(ClaimTypes.Role, "Admin"));
 
@@ -122,7 +125,20 @@ app.MapGet("/admin/logout", async (HttpContext context) =>
     context.Response.Redirect("/login");
 });
 
-// --- Standard middleware ---
+app.Use(async (context, next) =>
+{
+    var config = context.RequestServices.GetRequiredService<AdminConfigService>();
+    if (!config.IsConfigured && !context.Request.Path.StartsWithSegments("/setup"))
+    {
+        var accept = context.Request.Headers.Accept.FirstOrDefault() ?? "";
+        if (accept.Contains("text/html"))
+        {
+            context.Response.Redirect("/setup");
+            return;
+        }
+    }
+    await next();
+});
 
 if (!app.Environment.IsDevelopment())
 {

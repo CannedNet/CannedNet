@@ -21,6 +21,11 @@
         <ReconnectModal />
     </CascadingAuthenticationState>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        window.getElementValue = function (element) {
+            return element.value;
+        };
+    </script>
 </body>
 
 </html>

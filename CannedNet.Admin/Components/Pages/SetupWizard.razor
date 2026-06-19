@@ -1,0 +1,96 @@
+@page "/setup"
+@rendermode InteractiveServer
+@inject AdminConfigService AdminConfig
+@inject NavigationManager Navigation
+
+<PageTitle>First-Time Setup</PageTitle>
+
+@if (!AdminConfig.IsConfigured)
+{
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header"><h4 class="mb-0">First-Time Setup</h4></div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Welcome to the CannedNet Admin Panel. Before you can log in, please configure the
+                        connection to your CannedNet server.
+                    </p>
+
+                    @if (saved)
+                    {
+                        <div class="alert alert-success">Settings saved! Redirecting to login...</div>
+                    }
+
+                    @if (error)
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+
+                    <div class="mb-3">
+                        <label for="serverUrl" class="form-label">Server Base URL</label>
+                        <input type="url" class="form-control" id="serverUrl" @bind="edit.ServerBaseUrl" placeholder="http://localhost:5000" />
+                    </div>
+
+                    <button class="btn btn-primary" @onclick="Save" disabled="@saving">
+                        @(saving ? "Saving..." : "Save & Continue")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <p>Already configured. <a href="/login">Go to login</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private AdminConfigService.AdminConfigData edit = new();
+    private bool saving;
+    private bool saved;
+    private bool error;
+    private string errorMessage = "";
+
+    private async Task Save()
+    {
+        saving = true;
+        saved = false;
+        error = false;
+        errorMessage = "";
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(edit.ServerBaseUrl))
+            {
+                error = true;
+                errorMessage = "Server Base URL is required.";
+                return;
+            }
+
+            if (!Uri.TryCreate(edit.ServerBaseUrl, UriKind.Absolute, out _))
+            {
+                error = true;
+                errorMessage = "Server Base URL is not a valid absolute URL.";
+                return;
+            }
+
+            AdminConfig.Save(edit);
+            saved = true;
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

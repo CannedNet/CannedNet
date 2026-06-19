@@ -209,10 +209,23 @@ public class AdminController : ControllerBase
     [HttpPut("config/gameconfigs")]
     public async Task<IResult> SaveGameConfigs()
     {
-        using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync();
-        await System.IO.File.WriteAllTextAsync(Path.Combine(JsonDir, "gameconfigs.json"), body);
-        return Results.Ok(new { success = true });
+        try
+        {
+            using var reader = new StreamReader(Request.Body);
+            var body = await reader.ReadToEndAsync();
+
+            Console.WriteLine(body);
+
+            var path = Path.Combine(JsonDir, "gameconfigs.json");
+
+            await System.IO.File.WriteAllTextAsync(path, body);
+
+            return Results.Ok(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem(ex.ToString());
+        }
     }
 
     [HttpGet("config/communityboard")]
