@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:alpine
+    restart: always
+    container_name: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    env_file: ".env"
+    volumes:
+      - cannednet_pgdata:/var/lib/postgresql/cannednet/data
+    ports:
+      - "5532:5432"
+
+  cannednet:
+    build:
+      context: .
+      dockerfile: CannedNet/Dockerfile
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=cannednet;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}"
+    volumes:
+      - cannednet_data:/app/Data
+      - cannednet_images:/app/Images
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: .
+      dockerfile: CannedNet.Admin/Dockerfile
+    restart: always
+    ports:
+      - "5271:8080"
+    depends_on:
+      - cannednet
+
+volumes:
+  cannednet_pgdata:
+  cannednet_data:
+  cannednet_images:

@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+.git/
+.gitmodules/
+.idea/
+.DS_Store
+*.user
+*.DotSettings
+CannedNet/Data/PrivateKey.pem
+CannedNet/Data/PublicKey.pem
+CannedNet/config.json
+CannedNet.Admin/admin_users.json
+CannedNet.Admin/admin_config.json
