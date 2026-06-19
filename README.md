@@ -35,8 +35,10 @@ Other (non-2023 specific):
 ```
 git clone https://github.com/CannedNet/CannedNet.git
 cd CannedNet
+mv .env.example .env
 docker compose up
 ```
+NOTE: You can change the postgresql password in .env!
 
 ## Why?
 
