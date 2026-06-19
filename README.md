@@ -28,6 +28,16 @@ Other (non-2023 specific):
 - Image server returns an image, but improperly as the game doesn't handle the image and display it.
 - You are only able to go to private instances of rooms
 
+## Setup
+
+### Docker:
+
+```
+git clone https://github.com/CannedNet/CannedNet.git
+cd CannedNet
+docker compose up
+```
+
 ## Why?
 
 Rec Room has now publicly announced that they are shutting down forever on **June 1st of this year.**
