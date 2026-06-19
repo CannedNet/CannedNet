@@ -35,6 +35,7 @@ Other (non-2023 specific):
 ```
 git clone https://github.com/CannedNet/CannedNet.git
 cd CannedNet
+git switch 2023-Refactor
 mv .env.example .env
 docker compose up
 ```
