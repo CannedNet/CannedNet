@@ -51,40 +51,37 @@ public class ConfigService
         if (endpoints == null || endpoints.Count == 0)
             return;
 
-        var currentBase = DetectBaseUrl(endpoints);
-        if (currentBase == null)
+        if (!Uri.TryCreate(configBase + "/", UriKind.Absolute, out var configUri))
             return;
 
-        if (string.Equals(currentBase, configBase, StringComparison.OrdinalIgnoreCase))
-            return;
+        var configOrigin = $"{configUri.Scheme}://{configUri.Host}{(configUri.IsDefaultPort ? "" : $":{configUri.Port}")}";
 
         var updated = new Dictionary<string, string>(endpoints.Count);
+        var changed = false;
+
         foreach (var (key, url) in endpoints)
         {
-            if (url.StartsWith(currentBase, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
             {
-                var path = url[currentBase.Length..];
-                updated[key] = configBase + path;
+                updated[key] = url;
+                continue;
             }
-            else
+
+            var urlOrigin = $"{uri.Scheme}://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}";
+            if (string.Equals(urlOrigin, configOrigin, StringComparison.OrdinalIgnoreCase))
             {
                 updated[key] = url;
             }
+            else
+            {
+                var path = url[urlOrigin.Length..];
+                updated[key] = configOrigin + path;
+                changed = true;
+            }
         }
 
-        File.WriteAllText(EndpointsPath, JsonSerializer.Serialize(updated, Indented));
-    }
-
-    private static string? DetectBaseUrl(Dictionary<string, string> endpoints)
-    {
-        foreach (var url in endpoints.Values)
-        {
-            if (string.IsNullOrEmpty(url))
-                continue;
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-                return $"{uri.Scheme}://{uri.Host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}";
-        }
-        return null;
+        if (changed)
+            File.WriteAllText(EndpointsPath, JsonSerializer.Serialize(updated, Indented));
     }
 
     private static AppConfig CreateDefaultConfig()
