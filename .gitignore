@@ -10,4 +10,5 @@ CannedNet/Data/PrivateKey.pem
 /CannedNet/.zed
 CannedNet/Data/PublicKey.pem
 CannedNet.Admin/admin_users.json
+CannedNet.Admin/admin_config.json
 CannedNet/config.json

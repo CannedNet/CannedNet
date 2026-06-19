@@ -11,8 +11,6 @@
     <ProjectReference Include="..\CannedNet.Shared\CannedNet.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Update="admin_config.json" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
+
 
 </Project>
