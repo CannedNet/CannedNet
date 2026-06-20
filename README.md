@@ -5,7 +5,7 @@ Currently supported version: 2021-01-29 (There is a 2023 branch currently being 
 
 Contact: 
 
-CannedNet Discord: https://discord.gg/9b9Wx7cFZ
+[CannedNet Discord](https://discord.gg/MhSZ3UFTKG)
 
 `@lapisosc` on Twitter
 
