@@ -3,6 +3,14 @@ A RecNet API Reimplementation written in C#
 
 Currently supported version: manifest ``7859140924515540835``
 
+Contact: 
+
+[CannedNet Discord](https://discord.gg/MhSZ3UFTKG)
+
+`@lapisosc` on Twitter
+
+`lapiscreates` on Libera IRC
+
 TODO:
 
 - Player PFP changing
