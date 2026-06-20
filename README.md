@@ -5,7 +5,7 @@ Currently supported version: 2021-01-29 (There is a 2023 branch currently being 
 
 Contact: 
 
-`windows11pro` on Discord (Lapis)
+CannedNet Discord: https://discord.gg/9b9Wx7cFZ
 
 `@lapisosc` on Twitter
 
